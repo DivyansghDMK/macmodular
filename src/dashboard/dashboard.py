@@ -640,8 +640,8 @@ class Dashboard(QWidget):
         self.schedule_calendar.clicked.connect(self.on_calendar_date_selected)
         self.schedule_calendar.selectionChanged.connect(self.on_calendar_selection_changed)
         
-        # Connect month/year navigation to custom dropdowns
-        self.schedule_calendar.currentPageChanged.connect(self.on_calendar_page_changed)
+        # Disabled: No longer connect month/year navigation to custom dropdowns
+        # self.schedule_calendar.currentPageChanged.connect(self.on_calendar_page_changed)
         
         schedule_layout.addWidget(self.schedule_calendar)
         grid.addWidget(schedule_card, 2, 0)
@@ -841,10 +841,11 @@ class Dashboard(QWidget):
             pass
 
     def on_calendar_page_changed(self, year, month):
-        """Handle calendar page change and show month/year dropdowns"""
+        """Handle calendar page change - disabled dropdown functionality"""
         try:
-            # Show month dropdown
-            self.show_month_dropdown(year, month)
+            # Disabled: No longer show month dropdown when calendar arrows are clicked
+            # self.show_month_dropdown(year, month)
+            pass
         except Exception as e:
             print(f"Error in calendar page change: {e}")
 
@@ -1180,11 +1181,9 @@ class Dashboard(QWidget):
             # Update ST Interval
             if 'st_interval' in ecg_metrics:
                 self.metric_labels['st_interval'].setText(f"{ecg_metrics['st_interval']} ms")
-                # Set QTc to same value as ST for synchronization
-                self.metric_labels['qtc_interval'].setText(f"{ecg_metrics['st_interval']} ms")
             
-            # Update QTc Interval (fallback if ST not available)
-            if 'qtc_interval' in ecg_metrics and 'st_interval' not in ecg_metrics:
+            # Update QTc Interval
+            if 'qtc_interval' in ecg_metrics:
                 self.metric_labels['qtc_interval'].setText(f"{ecg_metrics['qtc_interval']} ms")
             
             # Update Sampling Rate - Commented out
@@ -1300,6 +1299,13 @@ class Dashboard(QWidget):
                         # Get metrics from ECG test page to ensure synchronization
                         if hasattr(self.ecg_test_page, 'get_current_metrics'):
                             ecg_metrics = self.ecg_test_page.get_current_metrics()
+                            # Debug: Print metrics to see what's being calculated
+                            if hasattr(self, '_debug_counter'):
+                                self._debug_counter += 1
+                            else:
+                                self._debug_counter = 1
+                            if self._debug_counter % 10 == 0:  # Print every 10 updates for more frequent debugging
+                                print(f"🔍 Dashboard ECG metrics: {ecg_metrics}")
                             self.update_dashboard_metrics_from_ecg()
                         
                         # Calculate and update stress level and HRV
@@ -1440,6 +1446,11 @@ class Dashboard(QWidget):
                         if qrs_text and qrs_text != '--':
                             self.metric_labels['qrs_duration'].setText(f"{qrs_text} ms")
                     
+                    if 'qrs_axis' in ecg_metrics:
+                        qrs_axis_text = ecg_metrics['qrs_axis']
+                        if qrs_axis_text and qrs_axis_text != '--':
+                            self.metric_labels['qrs_axis'].setText(f"{qrs_axis_text}°")
+                    
                     # if 'sampling_rate' in ecg_metrics:  # Commented out
                     #     sr_text = ecg_metrics['sampling_rate']
                     #     if sr_text and sr_text != '--':
@@ -1450,8 +1461,6 @@ class Dashboard(QWidget):
                         st_text = ecg_metrics['st_interval']
                         if st_text and st_text != '--':
                             self.metric_labels['st_interval'].setText(f"{st_text} ms")
-                            # Set QTc to same value as ST
-                            self.metric_labels['qtc_interval'].setText(f"{st_text} ms")
                     
                     if 'qtc_interval' in ecg_metrics:
                         qtc_text = ecg_metrics['qtc_interval']
