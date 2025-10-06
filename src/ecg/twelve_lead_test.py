@@ -1235,6 +1235,9 @@ class ECGTestPage(QWidget):
         self.metrics_frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         main_vbox.addWidget(self.metrics_frame)
         
+        # Ensure metrics are reset to zero after frame creation
+        self.reset_metrics_to_zero()
+        
         # --- REPLACED: Matplotlib plot area is replaced with a simple QWidget container ---
         self.plot_area = QWidget()
         self.plot_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -1539,6 +1542,15 @@ class ECGTestPage(QWidget):
         # Use Lead II (index 1) for primary analysis
         lead_ii_data = self.data[1]
         
+        print(f"🔍 ECG Metrics: Lead II data length: {len(lead_ii_data)}")
+        if len(lead_ii_data) > 0:
+            print(f"🔍 ECG Metrics: Lead II data range: {np.min(lead_ii_data):.2f} to {np.max(lead_ii_data):.2f}")
+        
+        # Check if data is all zeros or has no real signal variation
+        if len(lead_ii_data) < 100 or np.all(lead_ii_data == 0) or np.std(lead_ii_data) < 0.1:
+            print(f"🔍 ECG Metrics: No real signal detected, skipping calculation")
+            return
+        
         # Calculate Heart Rate from R-R intervals
         heart_rate = self.calculate_heart_rate(lead_ii_data)
         
@@ -1553,9 +1565,11 @@ class ECGTestPage(QWidget):
         
         # Calculate ST Interval
         st_interval = self.calculate_st_interval(lead_ii_data)
+        print(f"🔍 ST Interval calculated: {st_interval} ms")
         
         # Calculate QTc Interval (same as ST interval)
         qtc_interval = self.calculate_qtc_interval(heart_rate, st_interval)
+        print(f"🔍 QTc Interval calculated: {qtc_interval} ms")
         
         # Update UI metrics
         self.update_ecg_metrics_display(heart_rate, pr_interval, qrs_duration, qrs_axis, st_interval, qtc_interval)
@@ -1792,13 +1806,19 @@ class ECGTestPage(QWidget):
         """Calculate ST interval - LIVE"""
         try:
             if len(lead_data) < 200:
+                print(f"🔍 ST: Insufficient data ({len(lead_data)} samples)")
                 return 100  # Fallback
             
             # Apply bandpass filter to enhance R-peaks (0.5-40 Hz)
             from scipy.signal import butter, filtfilt, find_peaks
-            fs = 500
+            fs = 80  # Default to hardware sampling rate
             if hasattr(self, 'sampler') and hasattr(self.sampler, 'sampling_rate') and self.sampler.sampling_rate:
                 fs = float(self.sampler.sampling_rate)
+            elif hasattr(self, 'sampling_rate') and self.sampling_rate:
+                fs = float(self.sampling_rate)
+            
+            print(f"🔍 ST: Using sampling rate {fs} Hz for calculation")
+            print(f"🔍 ST: Data length: {len(lead_data)}, Data range: {np.min(lead_data):.2f} to {np.max(lead_data):.2f}")
             
             nyquist = fs / 2
             low = 0.5 / nyquist
@@ -1806,13 +1826,26 @@ class ECGTestPage(QWidget):
             b, a = butter(4, [low, high], btype='band')
             filtered_signal = filtfilt(b, a, lead_data)
             
-            # Find R-peaks
+            print(f"🔍 ST: Filtered signal range: {np.min(filtered_signal):.2f} to {np.max(filtered_signal):.2f}")
+            print(f"🔍 ST: Filtered signal std: {np.std(filtered_signal):.2f}")
+            
+            # Find R-peaks with more lenient parameters for hardware data
+            mean_height = np.mean(filtered_signal)
+            std_height = np.std(filtered_signal)
+            min_height = mean_height + 0.3 * std_height  # Reduced from 0.5
+            min_distance = int(0.3 * fs)  # Reduced from 0.4 (240ms at 80Hz)
+            min_prominence = std_height * 0.2  # Reduced from 0.3
+            
+            print(f"🔍 ST: R-peak detection params - height: {min_height:.2f}, distance: {min_distance}, prominence: {min_prominence:.2f}")
+            
             peaks, properties = find_peaks(
                 filtered_signal,
-                height=np.mean(filtered_signal) + 0.5 * np.std(filtered_signal),
-                distance=int(0.4 * fs),
-                prominence=np.std(filtered_signal) * 0.3
+                height=min_height,
+                distance=min_distance,
+                prominence=min_prominence
             )
+            
+            print(f"🔍 ST: Found {len(peaks)} R-peaks")
             
             if len(peaks) > 0:
                 st_intervals = []
@@ -1837,28 +1870,58 @@ class ECGTestPage(QWidget):
                             if len(t_end_candidates) > 0:
                                 t_end = r_peak + t_end_candidates[-1]
                                 st_interval = (t_end - s_point) / fs * 1000  # Convert to ms
+                                print(f"🔍 ST: Calculated interval {st_interval:.1f} ms")
                                 if 50 <= st_interval <= 300:  # Reasonable ST interval
                                     st_intervals.append(st_interval)
+                                    print(f"🔍 ST: Valid interval {st_interval:.1f} ms added")
+                                else:
+                                    print(f"🔍 ST: Interval {st_interval:.1f} ms outside range (50-300)")
                 
                 if st_intervals:
-                    return int(round(np.mean(st_intervals)))
+                    result = int(round(np.mean(st_intervals)))
+                    print(f"🔍 ST: Final result {result} ms from {len(st_intervals)} intervals")
+                    return result
             
+            print(f"🔍 ST: No valid intervals found, returning fallback 100 ms")
             return 100  # Fallback
         except:
             return 100
 
     def calculate_qtc_interval(self, heart_rate, st_interval):
-        """Calculate QTc - Set same as ST interval to match dashboard"""
+        """Calculate QTc using Bazett's formula: QTc = QT / sqrt(RR)"""
         try:
-            if st_interval:
-                return st_interval  # Same value as ST interval
-            return 0  # Fallback
-        except:
+            if not heart_rate or heart_rate <= 0:
+                print(f"🔍 QTc: Invalid heart rate ({heart_rate}), returning 0")
+                return 0
+            
+            if not st_interval or st_interval <= 0:
+                print(f"🔍 QTc: Invalid ST interval ({st_interval}), returning 0")
+                return 0
+            
+            # Calculate RR interval from heart rate (in seconds)
+            rr_interval = 60.0 / heart_rate  # RR interval in seconds
+            
+            # Use ST interval as QT interval (this is an approximation)
+            qt_interval = st_interval / 1000.0  # Convert ms to seconds
+            
+            # Apply Bazett's formula: QTc = QT / sqrt(RR)
+            qtc = qt_interval / np.sqrt(rr_interval)
+            
+            # Convert back to milliseconds
+            qtc_ms = int(round(qtc * 1000))
+            
+            print(f"🔍 QTc: HR={heart_rate}, ST={st_interval}ms, RR={rr_interval:.3f}s, QTc={qtc_ms}ms")
+            return qtc_ms
+            
+        except Exception as e:
+            print(f"🔍 QTc: Error {e}, returning 0")
             return 0
 
     def update_ecg_metrics_display(self, heart_rate, pr_interval, qrs_duration, qrs_axis, st_interval, qtc_interval=None):
         """Update the ECG metrics display in the UI"""
         try:
+            print(f"🔍 UI Update: HR={heart_rate}, PR={pr_interval}, QRS={qrs_duration}, Axis={qrs_axis}, ST={st_interval}, QTc={qtc_interval}")
+            
             if hasattr(self, 'metric_labels'):
                 if 'heart_rate' in self.metric_labels:
                     self.metric_labels['heart_rate'].setText(f"{heart_rate} ")
@@ -1880,14 +1943,21 @@ class ECGTestPage(QWidget):
         try:
             metrics = {}
             
-            # Get current heart rate
+            # Check if we have real signal data
+            has_real_signal = False
             if len(self.data) > 1:  # Lead II data available
-                heart_rate = self.calculate_heart_rate(self.data[1])
-                metrics['heart_rate'] = f"{heart_rate}" if heart_rate > 0 else "--"
-            else:
-                metrics['heart_rate'] = "--"
+                lead_ii_data = self.data[1]
+                if len(lead_ii_data) >= 100 and not np.all(lead_ii_data == 0) and np.std(lead_ii_data) >= 0.1:
+                    has_real_signal = True
             
-            # Get other metrics
+            # Get current heart rate
+            if has_real_signal:
+                heart_rate = self.calculate_heart_rate(self.data[1])
+                metrics['heart_rate'] = f"{heart_rate}" if heart_rate > 0 else "0"
+            else:
+                metrics['heart_rate'] = "0"
+            
+            # Get other metrics from UI labels (these should be zero if reset properly)
             if hasattr(self, 'metric_labels'):
                 if 'pr_interval' in self.metric_labels:
                     metrics['pr_interval'] = self.metric_labels['pr_interval'].text().replace(' ms', '')
@@ -1908,6 +1978,7 @@ class ECGTestPage(QWidget):
             else:
                 metrics['sampling_rate'] = "--"
             
+            print(f"🔍 get_current_metrics returning: {metrics}")
             return metrics
         except Exception as e:
             print(f"Error getting current metrics: {e}")
@@ -2056,7 +2127,7 @@ class ECGTestPage(QWidget):
             ("PR", "0", "pr_interval", "#ffffff"),
             ("QRS", "0", "qrs_duration", "#ffffff"),
             ("Axis", "0°", "qrs_axis", "#ffffff"),
-            ("ST", "0", "st_segment", "#ffffff"),
+            ("ST", "0", "st_interval", "#ffffff"),
             ("QTc", "0", "qtc_interval", "#ffffff"),
             ("Time", "00:00", "time_elapsed", "#ffffff"),
         ]
@@ -2136,6 +2207,9 @@ class ECGTestPage(QWidget):
         metrics_layout.insertWidget(0, heart_rate_widget)
         self.metric_labels['heart_rate'] = heart_rate_val
         
+        # Reset all metrics to zero after creating the frame
+        self.reset_metrics_to_zero()
+        
         return metrics_frame
 
     def update_ecg_metrics_on_top_of_lead_graphs(self, intervals):
@@ -2158,7 +2232,7 @@ class ECGTestPage(QWidget):
             self.metric_labels['qrs_axis'].setText(str(intervals['QRS_axis']))
         
         if 'ST' in intervals and intervals['ST'] is not None:
-            self.metric_labels['st_segment'].setText(
+            self.metric_labels['st_interval'].setText(
                 f"{int(round(intervals['ST']))}" if isinstance(intervals['ST'], (int, float)) else str(intervals['ST'])
             )
         
@@ -2199,7 +2273,7 @@ class ECGTestPage(QWidget):
                     label.setStyleSheet("color: #ffffff; background: transparent; padding: 4px 0px; border: none; font-size: 50px;")
                 elif key == 'qrs_axis':
                     label.setStyleSheet("color: #ffffff; background: transparent; padding: 4px 0px; border: none; font-size: 50px;")
-                elif key == 'st_segment':
+                elif key == 'st_interval':
                     label.setStyleSheet("color: #ffffff; background: transparent; padding: 4px 0px; border: none; font-size: 50px;")
                 elif key == 'time_elapsed':
                     label.setStyleSheet("color: #ffffff; background: transparent; padding: 4px 0px; border: none; font-size: 45px; min-width: 140px;")
@@ -2236,7 +2310,7 @@ class ECGTestPage(QWidget):
                     label.setStyleSheet("color: #2e7d32; background: transparent; padding: 4px 0px; border: none; font-size: 50px;")
                 elif key == 'qrs_axis':
                     label.setStyleSheet("color: #2e7d32; background: transparent; padding: 4px 0px; border: none; font-size: 50px;")
-                elif key == 'st_segment':
+                elif key == 'st_interval':
                     label.setStyleSheet("color: #2e7d32; background: transparent; padding: 4px 0px; border: none; font-size: 50px;")
                 elif key == 'time_elapsed':
                     label.setStyleSheet("color: #2e7d32; background: transparent; padding: 4px 0px; border: none; font-size: 45px; min-width: 140px;")
@@ -2272,7 +2346,7 @@ class ECGTestPage(QWidget):
                     label.setStyleSheet("color: #000000; background: transparent; padding: 4px 0px; border: none; font-size: 50px;")
                 elif key == 'qrs_axis':
                     label.setStyleSheet("color: #000000; background: transparent; padding: 4px 0px; border: none; font-size: 50px;")
-                elif key == 'st_segment':
+                elif key == 'st_interval':
                     label.setStyleSheet("color: #000000; background: transparent; padding: 4px 0px; border: none; font-size: 50px;")
                 elif key == 'time_elapsed':
                     label.setStyleSheet("color: #000000; background: transparent; padding: 4px 0px; border: none; font-size: 45px; min-width: 140px;")
@@ -2292,6 +2366,34 @@ class ECGTestPage(QWidget):
             minutes = int(elapsed // 60)
             seconds = int(elapsed % 60)
             self.metric_labels['time_elapsed'].setText(f"{minutes:02d}:{seconds:02d}")
+
+    def reset_metrics_to_zero(self):
+        """Reset all ECG metric labels to zero/initial state."""
+        try:
+            if hasattr(self, 'metric_labels') and isinstance(self.metric_labels, dict):
+                if 'heart_rate' in self.metric_labels:
+                    self.metric_labels['heart_rate'].setText("00")
+                if 'pr_interval' in self.metric_labels:
+                    self.metric_labels['pr_interval'].setText("0")
+                if 'qrs_duration' in self.metric_labels:
+                    self.metric_labels['qrs_duration'].setText("0")
+                if 'qrs_axis' in self.metric_labels:
+                    self.metric_labels['qrs_axis'].setText("0°")
+                if 'st_interval' in self.metric_labels:
+                    self.metric_labels['st_interval'].setText("0")
+                if 'qtc_interval' in self.metric_labels:
+                    self.metric_labels['qtc_interval'].setText("0")
+                if 'time_elapsed' in self.metric_labels:
+                    self.metric_labels['time_elapsed'].setText("00:00")
+        except Exception:
+            # Never block UI on reset
+            pass
+
+    def showEvent(self, event):
+        """Called when the ECG test page is shown - reset metrics to zero"""
+        super().showEvent(event)
+        # Reset metrics to zero when page is shown
+        self.reset_metrics_to_zero()
 
     # ------------------------ Calculate ECG Intervals ------------------------
 
@@ -4082,7 +4184,7 @@ class ECGTestPage(QWidget):
                 except Exception:
                     qtc = 0
                 try:
-                    st = _num_from_label(ml.get('st_segment', QLabel('')).text() if ml.get('st_segment') else '', 0)
+                    st = _num_from_label(ml.get('st_interval', QLabel('')).text() if ml.get('st_interval') else '', 0)
                 except Exception:
                     st = 0
 
@@ -5352,8 +5454,8 @@ class ECGTestPage(QWidget):
                     except Exception as e:
                         print(f"❌ Error updating plot {i}: {e}")
                         continue
-                # Calculate ECG metrics every 5 updates to reduce computation
-                if self.update_count % 5 == 0:
+                # Calculate ECG metrics every 2 updates to make it more responsive
+                if self.update_count % 2 == 0:
                     try:
                         self.calculate_ecg_metrics()
                     except Exception as e:
