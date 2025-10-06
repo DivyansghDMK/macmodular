@@ -371,6 +371,8 @@ class ExpandedLeadView(QDialog):
         self.lead_name = lead_name
         self.ecg_data = np.array(ecg_data) if ecg_data is not None and len(ecg_data) > 0 else np.array([])
         self.sampling_rate = sampling_rate
+        # Keep a reference to parent ECG page for shared metrics
+        self._parent = parent
         self.analyzer = PQRSTAnalyzer(sampling_rate)
         self.arrhythmia_detector = ArrhythmiaDetector(sampling_rate)
         # Display gain to make waves visually smaller (half-height)
@@ -580,8 +582,10 @@ class ExpandedLeadView(QDialog):
     
     def create_metrics_cards(self):
         """Create individual metric cards"""
-        # Remove Heart Rate and RR display per request; keep core PQRST-related durations
+        # Include Heart Rate and R-R Interval display as requested
         metrics = [
+            ("Heart Rate", 0, "bpm", "#e74c3c"),
+            ("R-R Interval", 0, "ms", "#2980b9"),
             ("PR Interval", 0, "ms", "#8e44ad"),
             ("QRS Duration", 0, "ms", "#27ae60"),
             ("P Duration", 0, "ms", "#16a085"),
@@ -596,6 +600,8 @@ class ExpandedLeadView(QDialog):
         self.metrics_vbox.addStretch(1)
         
         # Initialize with some default values for testing
+        self.update_metric('heart_rate', 0)
+        self.update_metric('rr_interval', 0)
         self.update_metric('pr_interval', 0)
         self.update_metric('qrs_duration', 0)
         self.update_metric('p_duration', 0)
@@ -634,6 +640,18 @@ class ExpandedLeadView(QDialog):
         try:
             # Get current data from parent ECG test page
             parent = self.parent()
+            # Align sampling rate with parent so HR/RR match dashboard
+            try:
+                if hasattr(parent, 'sampler') and getattr(parent.sampler, 'sampling_rate', 0):
+                    self.sampling_rate = float(parent.sampler.sampling_rate)
+                    self.analyzer.fs = self.sampling_rate
+                    self.arrhythmia_detector.fs = self.sampling_rate
+                elif hasattr(parent, 'sampling_rate') and parent.sampling_rate:
+                    self.sampling_rate = float(parent.sampling_rate)
+                    self.analyzer.fs = self.sampling_rate
+                    self.arrhythmia_detector.fs = self.sampling_rate
+            except Exception:
+                pass
             if hasattr(parent, 'data') and len(parent.data) > 0:
                 # Find the lead index for this lead
                 lead_index = self.get_lead_index()
@@ -750,13 +768,23 @@ class ExpandedLeadView(QDialog):
                 analysis['s_peaks'], analysis['t_peaks']
             )
             
-            # Heart Rate & RR Interval
-            if len(r_peaks) > 1:
-                rr_intervals = np.diff(r_peaks) / self.sampling_rate * 1000
-                mean_rr = np.mean(rr_intervals)
-                heart_rate = 60000 / mean_rr if mean_rr > 0 else 0
-                self.update_metric('heart_rate', int(heart_rate))
-                self.update_metric('rr_interval', int(mean_rr))
+            # Heart Rate & RR Interval - use same calculation as 12-lead page if available
+            parent = self._parent if hasattr(self, '_parent') else None
+            heart_rate = 0
+            if parent is not None and hasattr(parent, 'calculate_heart_rate'):
+                try:
+                    heart_rate = int(parent.calculate_heart_rate(self.ecg_data))
+                    self.update_metric('heart_rate', max(0, heart_rate))
+                    self.update_metric('rr_interval', int(60000 / heart_rate) if heart_rate > 0 else 0)
+                except Exception:
+                    heart_rate = 0
+            else:
+                if len(r_peaks) > 1:
+                    rr_intervals = np.diff(r_peaks) / self.sampling_rate * 1000
+                    mean_rr = np.mean(rr_intervals)
+                    heart_rate = 60000 / mean_rr if mean_rr > 0 else 0
+                    self.update_metric('heart_rate', int(heart_rate))
+                    self.update_metric('rr_interval', int(mean_rr))
             
             # PR Interval
             if len(p_peaks) > 0 and len(q_peaks) > 0:
