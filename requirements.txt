@@ -26,6 +26,9 @@ pyaudio>=0.2.11
 # Optional: Enhanced Performance
 numba>=0.56.0
 
+# System Monitoring (for crash logger)
+psutil>=5.9.0
+
 # Development Dependencies (optional)
 # pytest>=6.2.0
 # black>=21.0.0

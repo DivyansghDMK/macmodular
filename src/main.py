@@ -32,7 +32,7 @@ except ImportError as e:
         def info(self, msg): print(f"INFO: {msg}")
         def error(self, msg): print(f"ERROR: {msg}")
         def warning(self, msg): print(f"WARNING: {msg}")
-        def debug(self, msg): print(f"DEBUG: {msg}")
+        def debug(self, msg): print(f"DEBUG: {msg}") #msg is messagin g for the self
     
     def log_function_call(func):
         return func
@@ -344,29 +344,16 @@ class LoginRegisterDialog(QDialog):
         layout.addWidget(phone_btn)
         # Add nav links under phone_btn
         nav_row = QHBoxLayout()
-        # Navigation modules moved to clutter - using fallback
-        try:
-            # Try to import from clutter directory
-            import sys
-            clutter_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'clutter')
-            if clutter_path not in sys.path:
-                sys.path.insert(0, clutter_path)
-            
-            from nav_home import NavHome
-            from nav_about import NavAbout
-            from nav_blog import NavBlog
-            from nav_pricing import NavPricing
-        except ImportError as e:
-            logger.warning(f"Navigation modules not available: {e}")
-            # Create fallback navigation classes
-            class NavHome(QWidget):
-                def __init__(self): super().__init__(); self.setWindowTitle("Home")
-            class NavAbout(QWidget):
-                def __init__(self): super().__init__(); self.setWindowTitle("About")
-            class NavBlog(QWidget):
-                def __init__(self): super().__init__(); self.setWindowTitle("Blog")
-            class NavPricing(QWidget):
-                def __init__(self): super().__init__(); self.setWindowTitle("Pricing")
+        # Navigation modules - using simple placeholder classes
+        # (Original nav modules were moved to clutter directory)
+        class NavHome(QWidget):
+            def __init__(self): super().__init__(); self.setWindowTitle("Home")
+        class NavAbout(QWidget):
+            def __init__(self): super().__init__(); self.setWindowTitle("About")
+        class NavBlog(QWidget):
+            def __init__(self): super().__init__(); self.setWindowTitle("Blog")
+        class NavPricing(QWidget):
+            def __init__(self): super().__init__(); self.setWindowTitle("Pricing")
         nav_links = [
             ("Home", NavHome),
             ("About us", NavAbout),
@@ -385,16 +372,10 @@ class LoginRegisterDialog(QDialog):
             self.nav_stack.addWidget(page)
             self.nav_pages[text] = page
             if text == "Pricing":
-                try:
-                    # Try to import from clutter directory
-                    from nav_pricing import show_pricing_dialog
-                except ImportError as e:
-                    logger.warning(f"Pricing dialog not available: {e}")
-                    # Create fallback pricing dialog
-                    def show_pricing_dialog():
-                        QMessageBox.information(self, "Pricing", "Pricing information not available.")
-                    return
-                nav_btn.clicked.connect(lambda checked, p=self: show_pricing_dialog(p))
+                # Pricing dialog - using simple fallback
+                def show_pricing_dialog():
+                    QMessageBox.information(self, "Pricing", "Pricing information not available.")
+                nav_btn.clicked.connect(lambda checked, p=self: show_pricing_dialog())
             else:
                 nav_btn.clicked.connect(lambda checked, t=text: show_nav_page(t))
             nav_row.addWidget(nav_btn)
@@ -603,12 +584,13 @@ def plot_ecg_with_peaks(ax, ecg_signal, sampling_rate=500, arrhythmia_result=Non
         mean_rr = np.mean(rr_intervals)
         if mean_rr > 0:
             heart_rate = 60 / mean_rr
-    # Optionally calculate intervals (not shown on plot)
+    # TODO: Calculate actual intervals from ECG signal
+    # Currently these are placeholder values - real calculations should be implemented
     if len(r_peaks) > 0:
-        pr_interval = '--'
-        qrs_duration = '--'
-        qt_interval = '--'
-        qtc_interval = '--'
+        pr_interval = '--'  # TODO: Calculate P-R interval from P wave to QRS onset
+        qrs_duration = '--'  # TODO: Calculate QRS duration from Q onset to S end
+        qt_interval = '--'  # TODO: Calculate Q-T interval from Q onset to T wave end
+        qtc_interval = '--'  # TODO: Calculate corrected QT using Bazett's formula
     # --- End metrics ---
     # --- Display metrics and clinical info on the plot ---
     info_lines = [

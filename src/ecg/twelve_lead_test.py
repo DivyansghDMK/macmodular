@@ -5698,3 +5698,34 @@ class ECGTestPage(QWidget):
                 
         except Exception as log_error:
             print(f"❌ Error in error logging: {log_error}")
+    
+    def closeEvent(self, event):
+        """Clean up all resources when the ECG test page is closed"""
+        try:
+            # Stop demo manager
+            if hasattr(self, 'demo_manager'):
+                self.demo_manager.stop_demo_data()
+            
+            # Stop timers
+            if hasattr(self, 'timer') and self.timer:
+                self.timer.stop()
+                self.timer.deleteLater()
+            
+            if hasattr(self, 'elapsed_timer') and self.elapsed_timer:
+                self.elapsed_timer.stop()
+                self.elapsed_timer.deleteLater()
+            
+            # Close serial connection
+            if hasattr(self, 'serial_reader') and self.serial_reader:
+                try:
+                    self.serial_reader.close()
+                except Exception:
+                    pass
+            
+            # Log cleanup
+            if hasattr(self, 'crash_logger'):
+                self.crash_logger.log_info("ECG Test Page closed, resources cleaned up", "ECG_TEST_PAGE_CLOSE")
+        except Exception as e:
+            print(f"Error during ECGTestPage cleanup: {e}")
+        finally:
+            super().closeEvent(event)

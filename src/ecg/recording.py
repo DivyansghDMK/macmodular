@@ -14,27 +14,9 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import json 
 import sys
- 
-class ECGRecording:
-    def __init__(self):
-        self.recording = False
-        self.data = []
 
-    def start_recording(self):
-        self.recording = True
-        self.data = []  # Reset data for new recording
-        # Code to start ECG data acquisition would go here
-
-    def stop_recording(self):
-        self.recording = False
-        # Code to stop ECG data acquisition would go here
-
-    def save_recording(self, filename):
-        if not self.recording and self.data:
-            # Code to save self.data to a file with the given filename
-            pass
-        else:
-            raise Exception("Recording is still in progress or no data to save.")
+# NOTE: ECGRecording class removed (was never used in codebase)
+# Recording functionality is handled by SessionRecorder in utils/session_recorder.py
         
 class Lead12BlackPage(QWidget):
     def __init__(self, parent=None, dashboard=None):
@@ -70,6 +52,13 @@ class Lead12BlackPage(QWidget):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_data)
         self.timer.start(30)  # ~33 FPS
+    
+    def closeEvent(self, event):
+        """Clean up resources when widget is closed"""
+        if hasattr(self, 'timer') and self.timer:
+            self.timer.stop()
+            self.timer.deleteLater()
+        super().closeEvent(event)
 
     def update_data(self):
         for i in range(12):
@@ -104,23 +93,25 @@ class Lead12BlackPage(QWidget):
         lead_ii_signal = self.ecg_buffers[1][self.ptrs[1]:self.ptrs[1]+self.window_size]
         if len(lead_ii_signal) >= 1000:
             try:
-                # Placeholder for Lead II metrics calculation
-                pr_interval = 0.2  # Dummy value
-                qrs_duration = 0.08  # Dummy value
-                qt_interval = 0.4  # Dummy value
-                qtc_interval = 0.42  # Dummy value
-                qrs_axis = "--"  # Placeholder
-                st_segment = "--"  # Placeholder
+                # TODO: Replace with real metric calculations from twelve_lead_test.py
+                # These are placeholder/dummy values for testing visualization only
+                pr_interval = 0.2  # TODO: Calculate from real P-R wave detection
+                qrs_duration = 0.08  # TODO: Calculate from real QRS complex
+                qt_interval = 0.4  # TODO: Calculate from real Q-T interval
+                qtc_interval = 0.42  # TODO: Calculate corrected QT (Bazett's formula)
+                qrs_axis = "--"  # TODO: Calculate from lead I and aVF
+                st_segment = "--"  # TODO: Calculate ST elevation/depression
                 with open("ecg_metrics_output.txt", "w") as f:
-                    f.write("# ECG Metrics Output\n")
+                    f.write("# ECG Metrics Output (TEST/DEBUG ONLY)\n")
+                    f.write("# WARNING: These are placeholder values, not real calculations!\n")
                     f.write("# Format: PR_interval(ms), QRS_duration(ms), QTc_interval(ms), QRS_axis, ST_segment\n")
                     f.write(f"{pr_interval*1000}, {qrs_duration*1000}, {qtc_interval*1000}, {qrs_axis}, {st_segment}\n")
-                    # Dummy peak lists
-                    f.write(f"P_peaks: {list(np.array([100, 200, 300]))}\n")
-                    f.write(f"Q_peaks: {list(np.array([150, 250, 350]))}\n")
-                    f.write(f"R_peaks: {list(np.array([180, 280, 380]))}\n")
-                    f.write(f"S_peaks: {list(np.array([210, 310, 410]))}\n")
-                    f.write(f"T_peaks: {list(np.array([240, 340, 440]))}\n")
+                    # TODO: Replace with real peak detection from Pan-Tompkins algorithm
+                    f.write(f"P_peaks: {list(np.array([100, 200, 300]))}  # PLACEHOLDER\n")
+                    f.write(f"Q_peaks: {list(np.array([150, 250, 350]))}  # PLACEHOLDER\n")
+                    f.write(f"R_peaks: {list(np.array([180, 280, 380]))}  # PLACEHOLDER\n")
+                    f.write(f"S_peaks: {list(np.array([210, 310, 410]))}  # PLACEHOLDER\n")
+                    f.write(f"T_peaks: {list(np.array([240, 340, 440]))}  # PLACEHOLDER\n")
                 if self.dashboard and hasattr(self.dashboard, "update_ecg_metrics"):
                     self.dashboard.update_ecg_metrics(pr_interval, qrs_duration, qtc_interval, qrs_axis, st_segment)
                     QTimer.singleShot(0, self.dashboard.repaint)

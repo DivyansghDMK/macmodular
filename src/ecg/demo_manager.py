@@ -948,5 +948,10 @@ class DemoManager:
             self._stop_event.set()
             if self.demo_thread and self.demo_thread.is_alive():
                 self.demo_thread.join(timeout=0.5)
+            # Also stop timer to prevent memory leaks
+            if self.demo_timer:
+                self.demo_timer.stop()
+                self.demo_timer.deleteLater()
+                self.demo_timer = None
         except Exception:
             pass
