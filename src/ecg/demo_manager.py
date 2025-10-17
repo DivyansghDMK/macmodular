@@ -790,7 +790,7 @@ class DemoManager:
                                 fixed_qrs = 85  # ms (fixed)
                                 fixed_qt = qt_value  # Calculated QT
                                 fixed_qtc = qtc_value  # Calculated QTc
-                                fixed_axis = qrs_axis if qrs_axis is not None else "0°"
+                                fixed_axis = "0°"
                                 fixed_st = 90  # ms (fixed)
                             except Exception:
                                 fixed_hr, fixed_pr, fixed_qrs, fixed_qt, fixed_qtc, fixed_axis, fixed_st = 60, 160, 85, 380, 400, "0°", 90

@@ -508,6 +508,87 @@ To prevent future issues, consider implementing:
 **Version:** 1.0  
 **Contact:** [Your Development Team]
 
+# Redundant code (not used in project)
+
+# def plot_ecg_with_peaks(ax, ecg_signal, sampling_rate=500, arrhythmia_result=None, r_peaks=None, use_pan_tompkins=False):
+#     import numpy as np
+#     from scipy.signal import find_peaks
+#     # Use only the last 500 samples for live effect (1 second at 500Hz)
+#     window_size = 500
+#     if len(ecg_signal) > window_size:
+#         ecg_signal = ecg_signal[-window_size:]
+#     # --- Insert artificial gap (isoelectric line) between cycles for visualization ---
+#     # Detect R peaks to find cycles
+#     if use_pan_tompkins:
+#         r_peaks = pan_tompkins(ecg_signal, fs=sampling_rate)
+#     else:
+#         r_peaks, _ = find_peaks(ecg_signal, distance=int(0.2 * sampling_rate), prominence=0.6 * np.std(ecg_signal))
+#     gap_length = int(0.08 * sampling_rate)  # 80 ms gap (40 samples at 500Hz)
+#     ecg_with_gaps = []
+#     last_idx = 0
+#     for i, r in enumerate(r_peaks):
+#         # Add segment up to this R peak
+#         if i == 0:
+#             ecg_with_gaps.extend(ecg_signal[:r+1])
+#         else:
+#             ecg_with_gaps.extend(ecg_signal[last_idx+1:r+1])
+#         # Add gap after each cycle except last
+#         if i < len(r_peaks) - 1:
+#             baseline = int(np.mean(ecg_signal))
+#             ecg_with_gaps.extend([baseline] * gap_length)
+#         last_idx = r
+#     # Add the rest of the signal after last R
+#     if len(r_peaks) > 0 and last_idx+1 < len(ecg_signal):
+#         ecg_with_gaps.extend(ecg_signal[last_idx+1:])
+#     elif len(r_peaks) == 0:
+#         ecg_with_gaps = list(ecg_signal)
+#     ecg_signal = np.array(ecg_with_gaps)
+#     x = np.arange(len(ecg_signal))
+#     ax.clear()
+#     ax.plot(x, ecg_signal, color='#ff3380', lw=2)  # Pink line for ECG
+
+#     # --- Heart rate, PR, QRS, QTc, QRS axis, ST segment calculation ---
+#     heart_rate = None
+#     pr_interval = None
+#     qrs_duration = None
+#     qt_interval = None
+#     qtc_interval = None
+#     qrs_axis = '--'
+#     st_segment = '--'
+#     if len(r_peaks) > 1:
+#         rr_intervals = np.diff(r_peaks) / sampling_rate  # in seconds
+#         mean_rr = np.mean(rr_intervals)
+#         if mean_rr > 0:
+#             heart_rate = 60 / mean_rr
+#     # TODO: Calculate actual intervals from ECG signal
+#     # Currently these are placeholder values - real calculations should be implemented
+#     if len(r_peaks) > 0:
+#         pr_interval = '--'  # TODO: Calculate P-R interval from P wave to QRS onset
+#         qrs_duration = '--'  # TODO: Calculate QRS duration from Q onset to S end
+#         qt_interval = '--'  # TODO: Calculate Q-T interval from Q onset to T wave end
+#         qtc_interval = '--'  # TODO: Calculate corrected QT using Bazett's formula
+#     # --- End metrics ---
+#     # --- Display metrics and clinical info on the plot ---
+#     info_lines = [
+#         f"PR Interval: {pr_interval if pr_interval else '--'}",
+#         f"QRS Duration: {qrs_duration if qrs_duration else '--'}",
+#         f"QTc Interval: {qtc_interval if qtc_interval else '--'}",
+#         f"QRS Axis: {qrs_axis}",
+#         f"ST Segment: {st_segment}",
+#         f"Heart Rate: {heart_rate} bpm" if heart_rate else "Heart Rate: --"
+#     ]
+#     # Modern, clean info box
+#     y0 = np.min(ecg_signal) + 0.05 * (np.max(ecg_signal) - np.min(ecg_signal))
+#     ax.text(0.99, 0.01, '\n'.join(info_lines), color='#222', fontsize=12, fontweight='bold', ha='right', va='bottom', zorder=20,
+#             bbox=dict(facecolor='#f7f7f7', edgecolor='#ff3380', alpha=0.95, boxstyle='round,pad=0.4'), transform=ax.transAxes)
+#     # --- End display ---
+#     # No legend, no grid, no ticks for a clean look
+#     ax.set_facecolor('white')
+#     ax.figure.patch.set_facecolor('white')
+#     ax.set_xticks([])
+#     ax.set_yticks([])
+#     ax.grid(False)
+
 ---
 
 *This report is based on static code analysis and may not capture all runtime issues. Regular code reviews and testing are recommended.*

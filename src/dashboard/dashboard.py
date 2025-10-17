@@ -1526,9 +1526,25 @@ class Dashboard(QWidget):
         HR = self.metric_labels['heart_rate'].text().split()[0] if 'heart_rate' in self.metric_labels else "88"
         PR = self.metric_labels['pr_interval'].text().split()[0] if 'pr_interval' in self.metric_labels else "160"
         QRS = self.metric_labels['qrs_duration'].text().split()[0] if 'qrs_duration' in self.metric_labels else "90"
-        QT = "380"  # Default value
-        QTc = self.metric_labels['qtc_interval'].text().split()[0] if 'qtc_interval' in self.metric_labels else "400"
+        
+        # Extract QT and QTc from qtc_interval label (format: "QT/QTc" like "400/430")
+        qtc_label_text = self.metric_labels['qtc_interval'].text() if 'qtc_interval' in self.metric_labels else "400/430 ms"
+        # Remove " ms" suffix if present
+        qtc_label_text = qtc_label_text.replace(" ms", "").strip()
+        
+        if '/' in qtc_label_text:
+            # Split "400/430" format
+            qt_qtc_parts = qtc_label_text.split('/')
+            QT = qt_qtc_parts[0].strip() if len(qt_qtc_parts) > 0 else "400"
+            QTc = qt_qtc_parts[1].strip() if len(qt_qtc_parts) > 1 else "430"
+        else:
+            # Fallback: if no "/" found, use the value as QTc and default QT
+            QT = "400"
+            QTc = qtc_label_text.strip()
+        
         ST = self.metric_labels['st_segment'].text().split()[0] if 'st_segment' in self.metric_labels else "100"
+        
+        print(f"📊 PDF Report ECG Values - HR: {HR}, PR: {PR}, QRS: {QRS}, QT: {QT}, QTc: {QTc}, ST: {ST}")
 
         # Prepare data for the report generator
         ecg_data = {
@@ -1536,7 +1552,7 @@ class Dashboard(QWidget):
             "beat": int(HR) if HR.isdigit() else 88,  # Current heart rate
             "PR": int(PR) if PR.isdigit() else 160,
             "QRS": int(QRS) if QRS.isdigit() else 90,
-            "QT": int(QT) if QT.isdigit() else 380,
+            "QT": int(QT) if QT.isdigit() else 400,
             "QTc": int(QTc) if QTc.isdigit() else 400,
             "ST": int(ST) if ST.isdigit() else 100,
             "HR_max": 136,
@@ -1770,6 +1786,45 @@ class Dashboard(QWidget):
                     patient = {}
                 patient["date_time"] = now_str
 
+                # Force update conclusions before generating report
+                self.update_live_conclusion()
+                
+                # Calculate wave amplitudes before generating report
+                print("🔬 Calculating wave amplitudes for report...")
+                if hasattr(self, 'ecg_test_page') and self.ecg_test_page:
+                    try:
+                        print(f"🔬 ECG test page found, calling calculate_wave_amplitudes()...")
+                        wave_amps = self.ecg_test_page.calculate_wave_amplitudes()
+                        print(f"🔬 Raw wave_amps returned: {wave_amps}")
+                        
+                        # Add wave amplitudes to ecg_data
+                        ecg_data['p_amp'] = wave_amps.get('p_amp', 0.0)
+                        ecg_data['qrs_amp'] = wave_amps.get('qrs_amp', 0.0)
+                        ecg_data['t_amp'] = wave_amps.get('t_amp', 0.0)
+                        ecg_data['rv5'] = wave_amps.get('rv5', 0.0)
+                        ecg_data['sv1'] = wave_amps.get('sv1', 0.0)
+                        
+                        print(f"📊 Wave amplitudes added to ecg_data:")
+                        print(f"   P={ecg_data['p_amp']:.4f}, QRS={ecg_data['qrs_amp']:.4f}, T={ecg_data['t_amp']:.4f}")
+                        print(f"   RV5={ecg_data['rv5']:.4f}, SV1={ecg_data['sv1']:.4f}, RV5+SV1={ecg_data['rv5'] + ecg_data['sv1']:.4f}")
+                        print(f"🔬 Final ecg_data keys: {ecg_data.keys()}")
+                    except Exception as e:
+                        print(f"⚠️ Error calculating wave amplitudes: {e}")
+                        import traceback
+                        traceback.print_exc()
+                        ecg_data['p_amp'] = 0.0
+                        ecg_data['qrs_amp'] = 0.0
+                        ecg_data['t_amp'] = 0.0
+                        ecg_data['rv5'] = 0.0
+                        ecg_data['sv1'] = 0.0
+                else:
+                    print("⚠️ No ECG test page available for wave amplitude calculation")
+                    ecg_data['p_amp'] = 0.0
+                    ecg_data['qrs_amp'] = 0.0
+                    ecg_data['t_amp'] = 0.0
+                    ecg_data['rv5'] = 0.0
+                    ecg_data['sv1'] = 0.0
+                
                 # Generate the PDF with patient details
                 generate_ecg_report(filename, ecg_data, lead_img_paths, self, self.ecg_test_page, patient)
                 
@@ -2122,6 +2177,56 @@ class Dashboard(QWidget):
             
             if hasattr(self, 'conclusion_box'):
                 self.conclusion_box.setHtml(conclusion_html)
+            
+            # Save conclusions to JSON file for report generation (only if valid findings exist)
+            try:
+                import os
+                import json
+                from datetime import datetime
+                import re
+                
+                # Only save if we have actual findings (not empty)
+                if findings:
+                    # Extract clean headings from findings (remove prefixes, HTML tags, and explanations)
+                    clean_findings = []
+                    for f in findings:
+                        # Remove HTML tags first
+                        text = re.sub(r'<[^>]+>', '', f).strip()
+                        # Remove prefix markers like [i], [OK], [!]
+                        text = re.sub(r'^\[.*?\]\s*', '', text).strip()
+                        # Extract only the heading (before " - " if present)
+                        if ' - ' in text:
+                            text = text.split(' - ')[0].strip()
+                        clean_findings.append(text)
+                    
+                    # Clean recommendations (remove HTML tags and bullet points)
+                    clean_recommendations = []
+                    for r in recommendations:
+                        text = re.sub(r'<[^>]+>', '', r).strip()
+                        # Remove bullet point if present
+                        text = re.sub(r'^[•●○]\s*', '', text).strip()
+                        clean_recommendations.append(text)
+                    
+                    conclusions_data = {
+                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "findings": clean_findings,
+                        "recommendations": clean_recommendations
+                    }
+                    
+                    # Save to project root directory
+                    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+                    conclusions_file = os.path.join(base_dir, 'last_conclusions.json')
+                    
+                    with open(conclusions_file, 'w') as f:
+                        json.dump(conclusions_data, f, indent=2)
+                    
+                    print(f"✅ Saved {len(clean_findings)} findings to last_conclusions.json")
+                    print(f"   Findings: {clean_findings}")
+                else:
+                    print(f"⏭️ Skipped saving empty findings to last_conclusions.json (waiting for valid ECG data)")
+                
+            except Exception as save_err:
+                print(f"⚠️ Error saving conclusions to JSON: {save_err}")
         
         except Exception as e:
             print(f"⚠️ Error updating conclusion: {e}")
