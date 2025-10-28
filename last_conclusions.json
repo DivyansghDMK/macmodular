@@ -1,0 +1,12 @@
+{
+  "timestamp": "2025-10-28 14:02:32",
+  "findings": [
+    "Normal heart rate",
+    "Normal PR interval",
+    "Normal QRS duration",
+    "Low HRV"
+  ],
+  "recommendations": [
+    "Ensure adequate rest and stress management"
+  ]
+}
