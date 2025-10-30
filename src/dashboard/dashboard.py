@@ -280,6 +280,27 @@ class Dashboard(QWidget):
         
         header.addStretch()
         
+        # Cloud Sync Button - styled to match orange UI buttons
+        self.cloud_sync_btn = QPushButton("Cloud Sync")
+        self.cloud_sync_btn.setStyleSheet("""
+            QPushButton {
+                background: #ff6600;
+                color: white;
+                border-radius: 16px;
+                padding: 8px 24px;
+                font-size: 13px;
+                font-weight: bold;
+                border: 2px solid #ff7a26;
+                min-width: 140px;
+            }
+            QPushButton:hover { background: #ff7a26; border: 2px solid #ff8e47; }
+            QPushButton:pressed { background: #e65c00; }
+        """)
+        self.cloud_sync_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.cloud_sync_btn.setToolTip("Upload ECG reports and metrics to AWS S3")
+        self.cloud_sync_btn.clicked.connect(self.sync_to_cloud)
+        header.addWidget(self.cloud_sync_btn)
+        
         # User label removed per request
         # self.user_label = QLabel(f"{username or 'User'}\n{role or ''}")
         # self.user_label.setFont(QFont("Arial", 12))
@@ -294,6 +315,12 @@ class Dashboard(QWidget):
         header.addWidget(self.sign_btn)
         
         dashboard_layout.addLayout(header)
+
+        # --- Cloud Auto Sync: periodically back up reports when online ---
+        self._cloud_sync_in_progress = False
+        self.cloud_auto_timer = QTimer(self)
+        self.cloud_auto_timer.timeout.connect(self.auto_sync_to_cloud)
+        self.cloud_auto_timer.start(20000)  # every 20s
         
         # --- Greeting and Date Row ---
         greet_row = QHBoxLayout()
@@ -2465,6 +2492,172 @@ class Dashboard(QWidget):
         if hasattr(self, 'ecg_test_page') and hasattr(self.ecg_test_page, 'update_metrics_frame_theme'):
             self.ecg_test_page.update_metrics_frame_theme(self.dark_mode, self.medical_mode)
             
+    def auto_sync_to_cloud(self):
+        """Background auto-backup of reports/metrics when internet is available"""
+        try:
+            # Do not overlap
+            if getattr(self, '_cloud_sync_in_progress', False):
+                return
+            # Require internet
+            import socket
+            try:
+                socket.create_connection(("8.8.8.8", 53), timeout=2)
+                online = True
+            except Exception:
+                online = False
+            if not online:
+                return
+            # Require cloud configured
+            from utils.cloud_uploader import get_cloud_uploader
+            cloud_uploader = get_cloud_uploader()
+            if not cloud_uploader.is_configured():
+                return
+            # Scan reports directory for new files not in upload log
+            import glob, os, json
+            reports_dir = "reports"
+            os.makedirs(reports_dir, exist_ok=True)
+            uploaded_names = set()
+            try:
+                history = cloud_uploader.get_upload_history(limit=1000)
+                for item in history:
+                    path = item.get('local_path') or ''
+                    if path:
+                        uploaded_names.add(os.path.basename(path))
+            except Exception:
+                pass
+            candidates = []
+            candidates += glob.glob(os.path.join(reports_dir, "ECG_Report_*.pdf"))
+            candidates += [p for p in glob.glob(os.path.join(reports_dir, "*.json"))
+                           if ('report' in os.path.basename(p).lower() or 'metric' in os.path.basename(p).lower())]
+            # Filter new files
+            pending = [p for p in candidates if os.path.basename(p) not in uploaded_names]
+            if not pending:
+                return
+            # Upload in background (sequential, small set)
+            self._cloud_sync_in_progress = True
+            original_text = self.cloud_sync_btn.text() if hasattr(self, 'cloud_sync_btn') else ''
+            if hasattr(self, 'cloud_sync_btn'):
+                self.cloud_sync_btn.setText("Syncing...")
+                self.cloud_sync_btn.setEnabled(False)
+            for path in pending:
+                cloud_uploader.upload_report(path)
+            if hasattr(self, 'cloud_sync_btn'):
+                self.cloud_sync_btn.setText(original_text or "Cloud Sync")
+                self.cloud_sync_btn.setEnabled(True)
+        except Exception:
+            pass
+        finally:
+            self._cloud_sync_in_progress = False
+
+    def sync_to_cloud(self):
+        """Sync ECG reports and metrics to AWS S3"""
+        try:
+            from utils.cloud_uploader import get_cloud_uploader
+            from PyQt5.QtWidgets import QMessageBox
+            
+            cloud_uploader = get_cloud_uploader()
+            # Re-read .env in case the app was launched before keys were added
+            try:
+                cloud_uploader.reload_config()
+                # As an extra safeguard, read .env directly and override fields
+                try:
+                    from dotenv import dotenv_values
+                    from pathlib import Path as _P
+                    root = _P(__file__).resolve().parents[2]
+                    cfg = dotenv_values(str(root / '.env'))
+                    if cfg:
+                        cloud_uploader.cloud_service = (cfg.get('CLOUD_SERVICE') or cloud_uploader.cloud_service or 'none').lower()
+                        cloud_uploader.upload_enabled = (str(cfg.get('CLOUD_UPLOAD_ENABLED') or cloud_uploader.upload_enabled).lower() == 'true')
+                        cloud_uploader.s3_bucket = cfg.get('AWS_S3_BUCKET') or cloud_uploader.s3_bucket
+                        cloud_uploader.s3_region = cfg.get('AWS_S3_REGION') or cloud_uploader.s3_region
+                        cloud_uploader.aws_access_key = cfg.get('AWS_ACCESS_KEY_ID') or cloud_uploader.aws_access_key
+                        cloud_uploader.aws_secret_key = cfg.get('AWS_SECRET_ACCESS_KEY') or cloud_uploader.aws_secret_key
+                        _env_path_used = str(root / '.env')
+                    else:
+                        _env_path_used = '(not found)'
+                except Exception:
+                    _env_path_used = '(error reading .env)'
+            except Exception:
+                _env_path_used = '(reload failed)'
+            
+            if not cloud_uploader.is_configured():
+                QMessageBox.warning(
+                    self, 
+                    "Cloud Not Configured",
+                    (
+                        "AWS S3 is not configured.\n\nCurrent values read:\n"
+                        f"CLOUD_SERVICE={getattr(cloud_uploader,'cloud_service','')}\n"
+                        f"CLOUD_UPLOAD_ENABLED={getattr(cloud_uploader,'upload_enabled','')}\n"
+                        f"AWS_S3_BUCKET={getattr(cloud_uploader,'s3_bucket','')}\n"
+                        f"AWS_S3_REGION={getattr(cloud_uploader,'s3_region','')}\n"
+                        f"AWS_ACCESS_KEY_ID set?={'yes' if getattr(cloud_uploader,'aws_access_key',None) else 'no'}\n"
+                        f"AWS_SECRET_ACCESS_KEY set?={'yes' if getattr(cloud_uploader,'aws_secret_key',None) else 'no'}\n"
+                        f".env path tried: {_env_path_used}\n\n"
+                        "Fix: Create .env in project root with:\n"
+                        "CLOUD_UPLOAD_ENABLED=true\nCLOUD_SERVICE=s3\n"
+                        "AWS_S3_BUCKET=your-bucket-name\nAWS_S3_REGION=us-east-1\n"
+                        "AWS_ACCESS_KEY_ID=...\nAWS_SECRET_ACCESS_KEY=...\n\n"
+                        "See AWS_REPORTS_ONLY_SETUP.md for details."
+                    )
+                )
+                return
+            
+            # Show progress
+            self.cloud_sync_btn.setText("Syncing...")
+            self.cloud_sync_btn.setEnabled(False)
+            
+            # Find and upload all report files
+            import glob
+            reports_dir = "reports"
+            uploaded_count = 0
+            errors = []
+            
+            # Upload PDF reports
+            pdf_reports = glob.glob(os.path.join(reports_dir, "ECG_Report_*.pdf"))
+            for pdf_file in pdf_reports:
+                result = cloud_uploader.upload_report(pdf_file)
+                if result.get('status') == 'success':
+                    uploaded_count += 1
+                elif result.get('status') != 'skipped':
+                    errors.append(f"{os.path.basename(pdf_file)}: {result.get('message', 'Unknown error')}")
+            
+            # Upload metrics JSON files (if any)
+            json_reports = glob.glob(os.path.join(reports_dir, "*.json"))
+            for json_file in json_reports:
+                if 'report' in os.path.basename(json_file).lower() or 'metric' in os.path.basename(json_file).lower():
+                    result = cloud_uploader.upload_report(json_file)
+                    if result.get('status') == 'success':
+                        uploaded_count += 1
+                    elif result.get('status') != 'skipped':
+                        errors.append(f"{os.path.basename(json_file)}: {result.get('message', 'Unknown error')}")
+            
+            # Show results
+            self.cloud_sync_btn.setText("Cloud Sync")
+            self.cloud_sync_btn.setEnabled(True)
+            
+            if uploaded_count > 0:
+                msg = f"✅ Successfully uploaded {uploaded_count} file(s) to AWS S3!"
+                if errors:
+                    msg += f"\n\n{len(errors)} error(s):\n" + "\n".join(errors[:3])
+                QMessageBox.information(self, "Cloud Sync Complete", msg)
+            else:
+                QMessageBox.information(
+                    self, 
+                    "No Files to Sync",
+                    "No report files found in the reports directory."
+                )
+                
+        except Exception as e:
+            self.cloud_sync_btn.setText("Cloud Sync")
+            self.cloud_sync_btn.setEnabled(True)
+            from PyQt5.QtWidgets import QMessageBox
+            QMessageBox.critical(
+                self,
+                "Sync Error",
+                f"Failed to sync to cloud:\n{str(e)}"
+            )
+            print(f"❌ Cloud sync error: {e}")
+    
     def toggle_dark_mode(self):
         self.dark_mode = not self.dark_mode
         if self.dark_mode:

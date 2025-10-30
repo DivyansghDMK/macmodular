@@ -11,7 +11,49 @@ from datetime import datetime
 from dotenv import load_dotenv
 
 # Load environment variables
+# 1) Load from current working directory (if running from project root)
 load_dotenv()
+# 2) Also attempt to load from project root explicitly (works when app starts from elsewhere)
+try:
+    this_file = Path(__file__).resolve()
+    project_root = this_file.parents[2] if len(this_file.parents) >= 3 else this_file.parent
+    root_env = project_root / '.env'
+    if root_env.exists():
+        load_dotenv(dotenv_path=str(root_env), override=False)
+    else:
+        # Fallback: also try one directory up (in case of unusual packaging)
+        alt_env = project_root.parent / '.env'
+        if alt_env.exists():
+            load_dotenv(dotenv_path=str(alt_env), override=False)
+except Exception:
+    # Best-effort; silently continue if path resolution fails
+    pass
+
+# Final fallback: manually parse .env if python-dotenv misses it (rare edge cases)
+def _manual_env_load(env_path: Path):
+    try:
+        if env_path.exists():
+            with env_path.open('r', encoding='utf-8', errors='ignore') as f:
+                for raw in f:
+                    line = raw.replace('\ufeff', '')  # strip BOM if present
+                    line = line.replace('＝', '=')      # normalize unicode equals
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    if '=' in line:
+                        k, v = line.split('=', 1)
+                        k = k.strip()
+                        v = v.strip().strip('"').strip("'")
+                        # Force override to ensure latest values are used
+                        if k:
+                            os.environ[k] = v
+    except Exception:
+        pass
+
+try:
+    _manual_env_load(root_env)
+except Exception:
+    pass
 
 
 class CloudUploader:
@@ -51,6 +93,45 @@ class CloudUploader:
         
         # Log file for upload tracking
         self.upload_log_path = "reports/upload_log.json"
+
+    def reload_config(self):
+        """Re-read .env from CWD and project root and refresh fields."""
+        try:
+            load_dotenv(override=True)
+            this_file = Path(__file__).resolve()
+            project_root = this_file.parents[2] if len(this_file.parents) >= 3 else this_file.parent
+            root_env = project_root / '.env'
+            if root_env.exists():
+                load_dotenv(dotenv_path=str(root_env), override=True)
+            # Manual fallback parse as well
+            try:
+                _manual_env_load(root_env)
+            except Exception:
+                pass
+            # Also try CWD .env
+            try:
+                cwd_env = Path(os.getcwd()) / '.env'
+                _manual_env_load(cwd_env)
+            except Exception:
+                pass
+        except Exception:
+            pass
+        self.cloud_service = os.getenv('CLOUD_SERVICE', 'none').lower()
+        self.upload_enabled = os.getenv('CLOUD_UPLOAD_ENABLED', 'false').lower() == 'true'
+        self.s3_bucket = os.getenv('AWS_S3_BUCKET')
+        self.s3_region = os.getenv('AWS_S3_REGION', 'us-east-1')
+        self.aws_access_key = os.getenv('AWS_ACCESS_KEY_ID')
+        self.aws_secret_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+
+    def get_config_snapshot(self):
+        return {
+            'cloud_service': self.cloud_service,
+            'upload_enabled': self.upload_enabled,
+            's3_bucket': self.s3_bucket,
+            's3_region': self.s3_region,
+            'aws_access_key_set': bool(self.aws_access_key),
+            'aws_secret_key_set': bool(self.aws_secret_key),
+        }
         
     def is_configured(self):
         """Check if cloud upload is properly configured"""

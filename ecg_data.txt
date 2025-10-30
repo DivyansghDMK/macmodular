@@ -7,3 +7,5 @@ harsh, harsh, ptr, 30, Female
 harsh, harsh, ptr, 30, Female
 harsh, harsh, ptr, 30, Female
 deck, deck, deck, 12, Male
+divyansh, divyanshg, bakar, 19, Male
+deckmount, Divyansh, Ankur, 39, Male
