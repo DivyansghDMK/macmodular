@@ -274,6 +274,55 @@ class CloudUploader:
             return {"status": "error", "message": "boto3 not installed. Run: pip install boto3"}
         except ClientError as e:
             return {"status": "error", "message": f"S3 upload failed: {str(e)}"}
+
+    def list_reports(self, prefix: str = "ecg-reports/"):
+        """List report objects in S3 (PDF and JSON under prefix)."""
+        if not (self.upload_enabled and self.cloud_service == 's3' and self.s3_bucket):
+            return {"status": "error", "message": "S3 not configured"}
+        try:
+            import boto3
+            s3 = boto3.client(
+                's3',
+                aws_access_key_id=self.aws_access_key,
+                aws_secret_access_key=self.aws_secret_key,
+                region_name=self.s3_region
+            )
+            paginator = s3.get_paginator('list_objects_v2')
+            pages = paginator.paginate(Bucket=self.s3_bucket, Prefix=prefix)
+            items = []
+            for page in pages:
+                for obj in page.get('Contents', []) or []:
+                    key = obj['Key']
+                    if not key.lower().endswith(('.pdf', '.json')):
+                        continue
+                    items.append({
+                        'key': key,
+                        'size': obj.get('Size', 0),
+                        'last_modified': obj.get('LastModified').isoformat() if obj.get('LastModified') else '',
+                        'url': f"https://{self.s3_bucket}.s3.{self.s3_region}.amazonaws.com/{key}"
+                    })
+            return {"status": "success", "items": items}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def generate_presigned_url(self, key: str, expires_in: int = 3600):
+        """Generate a presigned URL for a given S3 object key."""
+        try:
+            import boto3
+            s3 = boto3.client(
+                's3',
+                aws_access_key_id=self.aws_access_key,
+                aws_secret_access_key=self.aws_secret_key,
+                region_name=self.s3_region
+            )
+            url = s3.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': self.s3_bucket, 'Key': key},
+                ExpiresIn=expires_in
+            )
+            return {"status": "success", "url": url}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
     
     def _upload_to_azure(self, file_path, metadata):
         """Upload to Azure Blob Storage"""

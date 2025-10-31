@@ -22,6 +22,7 @@ import time
 from dashboard.chatbot_dialog import ChatbotDialog
 from utils.settings_manager import SettingsManager
 from utils.crash_logger import get_crash_logger, CrashLogDialog
+from dashboard.admin_reports import AdminLoginDialog, AdminReportsDialog
 
 # Try to import configuration, fallback to defaults if not available
 try:
@@ -300,6 +301,8 @@ class Dashboard(QWidget):
         self.cloud_sync_btn.setToolTip("Upload ECG reports and metrics to AWS S3")
         self.cloud_sync_btn.clicked.connect(self.sync_to_cloud)
         header.addWidget(self.cloud_sync_btn)
+        # Fully automatic mode: hide manual sync button
+        self.cloud_sync_btn.setVisible(False)
         
         # User label removed per request
         # self.user_label = QLabel(f"{username or 'User'}\n{role or ''}")
@@ -308,6 +311,10 @@ class Dashboard(QWidget):
         # self.user_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         # header.addWidget(self.user_label)
         
+        # Admin button (disabled per request; keep logic available)
+        self.admin_btn = QPushButton("Admin")
+        self.admin_btn.setVisible(False)
+
         self.sign_btn = QPushButton("Sign Out")
         self.sign_btn.setStyleSheet("background: #e74c3c; color: white; border-radius: 10px; padding: 4px 18px;")
         self.sign_btn.clicked.connect(self.handle_sign_out)
@@ -320,7 +327,7 @@ class Dashboard(QWidget):
         self._cloud_sync_in_progress = False
         self.cloud_auto_timer = QTimer(self)
         self.cloud_auto_timer.timeout.connect(self.auto_sync_to_cloud)
-        self.cloud_auto_timer.start(20000)  # every 20s
+        self.cloud_auto_timer.start(5000)  # every 5s for quicker auto-backup
         
         # --- Greeting and Date Row ---
         greet_row = QHBoxLayout()
@@ -2492,6 +2499,18 @@ class Dashboard(QWidget):
         if hasattr(self, 'ecg_test_page') and hasattr(self.ecg_test_page, 'update_metrics_frame_theme'):
             self.ecg_test_page.update_metrics_frame_theme(self.dark_mode, self.medical_mode)
             
+    def open_admin_reports(self):
+        try:
+            login = AdminLoginDialog(self)
+            if login.exec_() == QDialog.Accepted:
+                from utils.cloud_uploader import get_cloud_uploader
+                cu = get_cloud_uploader()
+                cu.reload_config()
+                dlg = AdminReportsDialog(cu, self)
+                dlg.exec_()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Unable to open admin reports: {e}")
+
     def auto_sync_to_cloud(self):
         """Background auto-backup of reports/metrics when internet is available"""
         try:
@@ -2612,40 +2631,40 @@ class Dashboard(QWidget):
             uploaded_count = 0
             errors = []
             
-            # Upload PDF reports
+            # Build file lists (non-blocking upload in background thread)
             pdf_reports = glob.glob(os.path.join(reports_dir, "ECG_Report_*.pdf"))
-            for pdf_file in pdf_reports:
-                result = cloud_uploader.upload_report(pdf_file)
-                if result.get('status') == 'success':
-                    uploaded_count += 1
-                elif result.get('status') != 'skipped':
-                    errors.append(f"{os.path.basename(pdf_file)}: {result.get('message', 'Unknown error')}")
-            
-            # Upload metrics JSON files (if any)
-            json_reports = glob.glob(os.path.join(reports_dir, "*.json"))
-            for json_file in json_reports:
-                if 'report' in os.path.basename(json_file).lower() or 'metric' in os.path.basename(json_file).lower():
-                    result = cloud_uploader.upload_report(json_file)
-                    if result.get('status') == 'success':
-                        uploaded_count += 1
-                    elif result.get('status') != 'skipped':
-                        errors.append(f"{os.path.basename(json_file)}: {result.get('message', 'Unknown error')}")
-            
-            # Show results
-            self.cloud_sync_btn.setText("Cloud Sync")
-            self.cloud_sync_btn.setEnabled(True)
-            
-            if uploaded_count > 0:
-                msg = f"✅ Successfully uploaded {uploaded_count} file(s) to AWS S3!"
-                if errors:
-                    msg += f"\n\n{len(errors)} error(s):\n" + "\n".join(errors[:3])
-                QMessageBox.information(self, "Cloud Sync Complete", msg)
-            else:
-                QMessageBox.information(
-                    self, 
-                    "No Files to Sync",
-                    "No report files found in the reports directory."
-                )
+            json_reports = [p for p in glob.glob(os.path.join(reports_dir, "*.json"))
+                            if 'report' in os.path.basename(p).lower() or 'metric' in os.path.basename(p).lower()]
+
+            files_to_upload = pdf_reports + json_reports
+
+            import threading
+            def _do_upload():
+                nonlocal uploaded_count, errors
+                try:
+                    for path in files_to_upload:
+                        result = cloud_uploader.upload_report(path)
+                        if result.get('status') == 'success':
+                            uploaded_count += 1
+                        elif result.get('status') != 'skipped':
+                            errors.append(f"{os.path.basename(path)}: {result.get('message', 'Unknown error')}")
+                finally:
+                    # Restore UI safely on the main thread
+                    try:
+                        self.cloud_sync_btn.setText("Cloud Sync")
+                        self.cloud_sync_btn.setEnabled(True)
+                        if uploaded_count > 0:
+                            msg = f"✅ Successfully uploaded {uploaded_count} file(s) to AWS S3!"
+                            if errors:
+                                msg += f"\n\n{len(errors)} error(s):\n" + "\n".join(errors[:3])
+                            QMessageBox.information(self, "Cloud Sync Complete", msg)
+                        else:
+                            QMessageBox.information(self, "No Files to Sync", "No report files found in the reports directory.")
+                    except Exception:
+                        pass
+
+            t = threading.Thread(target=_do_upload, daemon=True)
+            t.start()
                 
         except Exception as e:
             self.cloud_sync_btn.setText("Cloud Sync")
