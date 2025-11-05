@@ -1,5 +1,10 @@
 # ECG System Documentation
 
+> **📘 For comprehensive technical documentation, see [TECHNICAL_DOCUMENTATION.md](TECHNICAL_DOCUMENTATION.md)**  
+> This file contains legacy hardware specifications. For complete system architecture, API reference, and deployment guides, refer to the main technical documentation.
+
+---
+
 ## Hardware Data Reading Specifications
 
 ### Timer Intervals and Reading Rates
