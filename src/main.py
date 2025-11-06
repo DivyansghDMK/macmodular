@@ -391,8 +391,8 @@ class LoginRegisterDialog(QDialog):
             self.nav_pages[text] = page
             if text == "Pricing":
                 # Pricing dialog - using simple fallback
-                def show_pricing_dialog():
-                    QMessageBox.information(self, "Pricing", "Pricing information not available.")
+                    def show_pricing_dialog():
+                        QMessageBox.information(self, "Pricing", "Pricing information not available.")
                 nav_btn.clicked.connect(lambda checked, p=self: show_pricing_dialog())
             else:
                 nav_btn.clicked.connect(lambda checked, t=text: show_nav_page(t))
@@ -495,10 +495,10 @@ class LoginRegisterDialog(QDialog):
                 self.user_details = record  # Store full user details
                 self.accept()
             else:
-                self.result = True
+            self.result = True
                 self.username = identifier
-                self.user_details = {}
-                self.accept()
+            self.user_details = {}
+            self.accept()
         else:
             QMessageBox.warning(self, "Error", "Invalid credentials. Please check your full name and password.")
 
