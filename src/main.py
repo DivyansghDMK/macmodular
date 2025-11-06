@@ -391,8 +391,8 @@ class LoginRegisterDialog(QDialog):
             self.nav_pages[text] = page
             if text == "Pricing":
                 # Pricing dialog - using simple fallback
-                    def show_pricing_dialog():
-                        QMessageBox.information(self, "Pricing", "Pricing information not available.")
+                def show_pricing_dialog():
+                    QMessageBox.information(self, "Pricing", "Pricing information not available.")
                 nav_btn.clicked.connect(lambda checked, p=self: show_pricing_dialog())
             else:
                 nav_btn.clicked.connect(lambda checked, t=text: show_nav_page(t))
