@@ -689,7 +689,7 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
         ["QT Interval", f"{data['QT']} ms", "300 ms - 450 ms"],            
         ["QTC Interval", f"{data['QTc']} ms", "300 ms - 450 ms"],          
         ["QRS Axis", f"{data.get('QRS_axis', '--')}°", "Normal"],         
-        ["ST Interval", f"{data['ST']} ms", "80 ms - 120 ms"],            
+        ["ST Segment", f"{data['ST']} mV", "-0.5 mV to +1.0 mV"],  # Changed from ms to mV            
     ]
     
     # Add headers to data
@@ -915,7 +915,7 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
     vital_table_data = [
         [f"HR : {HR} bpm", f"QT: {QT} ms"],
         [f"PR : {PR} ms", f"QTc: {QTc} ms"],
-        [f"QRS: {QRS} ms", f"ST: {ST} ms"],
+        [f"QRS: {QRS} ms", f"ST: {ST} mV"],  # Changed from ms to mV (voltage)
         [f"RR : {RR} ms", ""]  
     ]
 
@@ -1118,7 +1118,8 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
     master_drawing.add(qtc_label)
 
     # SECOND COLUMN (Right side - x=240)
-    st_label = String(240, 594, f"ST            : {ST} ms", 
+    # ST segment is voltage (mV), not time (ms)
+    st_label = String(240, 594, f"ST            : {ST} mV", 
                      fontSize=10, fontName="Helvetica", fillColor=colors.black)
     master_drawing.add(st_label)
 
@@ -1320,54 +1321,28 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
         except Exception as e:
             print(f"⚠️ Fallback RV5/SV1 computation failed: {e}")
 
-    # Values from calculate_wave_amplitudes() are ALREADY in mV (not μV!)
-    # NO conversion needed - just use directly
-    rv5_mv = rv5_amp if rv5_amp > 0 else 1.260  # Already in mV, fallback 1.260
-    sv1_mv = sv1_amp if sv1_amp > 0 else 0.786  # Already in mV, fallback 0.786
+    # Values from calculate_wave_amplitudes() are in microvolts (μV)
+    # Values are correct - just need to fix the unit label
+    rv5_uv = rv5_amp if rv5_amp > 0 else 1260.0  # In μV, fallback 1260 μV
+    sv1_uv = sv1_amp if sv1_amp > 0 else 786.0  # In μV, fallback 786 μV
     
-    print(f"   RV5={rv5_mv:.3f} mV, SV1={sv1_mv:.3f} mV (NO conversion - already in mV)")
+    print(f"   RV5={rv5_uv:.3f} μV, SV1={sv1_uv:.3f} μV (values are in microvolts)")
     
-    # SECOND COLUMN - RV5/SV1 (in millivolts - medical standard)
-    rv5_sv_label = String(240, 650, f"RV5/SV1  : {rv5_mv:.3f}/{sv1_mv:.3f} mV", 
+    # SECOND COLUMN - RV5/SV1 (in microvolts - correct unit label)
+    rv5_sv_label = String(240, 650, f"RV5/SV1  : {rv5_uv:.3f}/{sv1_uv:.3f} μV", 
                           fontSize=10, fontName="Helvetica", fillColor=colors.black)
     master_drawing.add(rv5_sv_label)
 
     # Calculate RV5+SV1 sum (Sokolow-Lyon Index for LVH detection)
-    rv5_sv1_sum = rv5_mv + sv1_mv
+    rv5_sv1_sum = rv5_uv + sv1_uv
     
-    # SECOND COLUMN - RV5+SV1 (in millivolts - medical standard)
-    rv5_sv1_sum_label = String(240, 630, f"RV5+SV1  : {rv5_sv1_sum:.3f} mV", 
+    # SECOND COLUMN - RV5+SV1 (in microvolts - correct unit label)
+    rv5_sv1_sum_label = String(240, 630, f"RV5+SV1  : {rv5_sv1_sum:.3f} μV", 
                                fontSize=10, fontName="Helvetica", fillColor=colors.black)
     master_drawing.add(rv5_sv1_sum_label)
 
-    # SECOND COLUMN - QTCF (Fridericia formula: QTc = QT / ∛RR)
-    try:
-        if RR > 0 and QT > 0:
-            # Fridericia formula: QT / cube_root(RR)
-            qtcf_ms = round(QT / (RR ** (1/3)), 0)
-            
-            # Add status based on normal range (350-450 ms)
-            if qtcf_ms < 350:
-                qtcf_status = " (Short)"
-            elif qtcf_ms > 450:
-                qtcf_status = " (Prolonged)"
-            else:
-                qtcf_status = " (Normal)"
-            
-            qtcf_display = f"QTCF       : {int(qtcf_ms)} ms{qtcf_status}"
-            print(f"   QTCF calculated: {qtcf_ms:.0f} ms from QT={QT}, RR={RR}")
-        else:
-            qtcf_display = "QTCF       : -- ms (Insufficient data)"
-            qtcf_ms = 0
-            print(f"   QTCF not calculated: QT={QT}, RR={RR}")
-    except Exception as e:
-        qtcf_display = "QTCF       : -- ms (Calculation error)"
-        qtcf_ms = 0
-        print(f"⚠️ QTCF calculation error: {e}")
-    
-    qtcf_label = String(240, 612, qtcf_display, 
-                        fontSize=10, fontName="Helvetica", fillColor=colors.black)
-    master_drawing.add(qtcf_label)
+    # QTCF removed - not a standard ECG parameter
+    # QTc (Bazett's formula) is already calculated and displayed above
 
     
 
@@ -1643,10 +1618,9 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
                 "QTc_ms": QTc,
                 "ST_ms": ST,
                 "RR_ms": RR,
-                "RV5_plus_SV1_mV": round(rv5_sv1_sum, 3),
-                "P_QRS_T_axes_deg": [p_axis_str, qrs_axis_str, t_axis_str],  # Changed to axes in degrees
-                "RV5_SV1_mV": [round(rv5_mv, 3), round(sv1_mv, 3)],
-                "QTCF_ms": int(qtcf_ms) if 'qtcf_ms' in locals() and qtcf_ms > 0 else 0,
+                "RV5_plus_SV1_uV": round(rv5_sv1_sum, 1),  # Microvolts
+                "P_QRS_T_axes_deg": [p_axis_str, qrs_axis_str, t_axis_str],
+                "RV5_SV1_uV": [round(rv5_uv, 1), round(sv1_uv, 1)],  # Microvolts
             }
         }
 
@@ -1680,10 +1654,9 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
             "QTc_ms": QTc,
             "ST_ms": ST,
             "RR_ms": RR,
-            "RV5_plus_SV1_mV": round(rv5_sv1_sum, 3),
-            "P_QRS_T_axes_deg": [p_axis_str, qrs_axis_str, t_axis_str],  # Changed to axes in degrees
-            "QTCF_ms": int(qtcf_ms) if 'qtcf_ms' in locals() and qtcf_ms > 0 else 0,
-            "RV5_SV1_mV": [round(rv5_mv, 3), round(sv1_mv, 3)]
+            "RV5_plus_SV1_uV": round(rv5_sv1_sum, 1),  # Microvolts
+            "P_QRS_T_axes_deg": [p_axis_str, qrs_axis_str, t_axis_str],
+            "RV5_SV1_uV": [round(rv5_uv, 1), round(sv1_uv, 1)]  # Microvolts
         }
 
         metrics_list = []

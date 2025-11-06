@@ -2288,7 +2288,21 @@ class ECGTestPage(QWidget):
             return 0
 
     def calculate_qtc_interval(self, heart_rate, qt_interval):
-        """Calculate QTc using Bazett's formula: QTc = QT / sqrt(RR)"""
+        """
+        Calculate QTc using Bazett's formula: QTc = QT / sqrt(RR_seconds)
+        
+        Args:
+            heart_rate: Heart rate in bpm
+            qt_interval: QT interval in milliseconds
+        
+        Returns:
+            QTc interval in milliseconds
+        
+        Example:
+            QT = 438 ms, HR = 90 bpm
+            RR = 60/90 = 0.667 seconds
+            QTc = 438 / sqrt(0.667) = 438 / 0.817 = 536 ms
+        """
         try:
             if not heart_rate or heart_rate <= 0:
                 return 0
@@ -2297,16 +2311,16 @@ class ECGTestPage(QWidget):
                 return 0
             
             # Calculate RR interval from heart rate (in seconds)
-            rr_interval = 60.0 / heart_rate
+            rr_seconds = 60.0 / heart_rate
             
-            # QT in seconds
-            qt_sec = qt_interval / 1000.0
+            # Apply Bazett's formula: QTc = QT_ms / sqrt(RR_seconds)
+            # QT stays in ms, divide by sqrt of RR in seconds
+            qtc_ms = qt_interval / np.sqrt(rr_seconds)
             
-            # Apply Bazett's formula: QTc = QT / sqrt(RR)
-            qtc = qt_sec / np.sqrt(rr_interval)
+            # Round to integer
+            qtc_ms = int(round(qtc_ms))
             
-            # Convert back to milliseconds
-            qtc_ms = int(round(qtc * 1000))
+            print(f"✅ QTc Bazett: QT={qt_interval}ms, HR={heart_rate}bpm, RR={rr_seconds:.3f}s → QTc={qtc_ms}ms")
             
             return qtc_ms
             
