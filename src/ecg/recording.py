@@ -11,7 +11,7 @@ from PyQt5.QtGui import QIntValidator
 from utils.settings_manager import SettingsManager
 import os
 import matplotlib.pyplot as plt
-import pandas as pd
+import pandas as pd 
 import json 
 import sys
 
@@ -1662,7 +1662,7 @@ class ECGMenu(QGroupBox):
         # Calculate better minimum widths based on content
         max_label_width = max(len(label) for label, _ in version_info) * 8 + 20  # 8 pixels per char + padding
         max_value_width = max(len(value) for _, value in version_info) * 8 + 20
-        
+
         for label, value in version_info:
             row = QHBoxLayout()
             row.setSpacing(10)  # Consistent spacing between label and value
