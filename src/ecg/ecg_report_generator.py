@@ -471,6 +471,7 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
             "HR_max": 0,
             "HR_min": 0,
             "HR_avg": 0,
+            "Heart_Rate": 0,  # Add for compatibility with dashboard
             "QRS_axis": "--",
         }
 
@@ -899,7 +900,8 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
     )
 
     # Get real ECG data from dashboard
-    HR = data.get('HR_avg', 70)
+    # Try 'Heart_Rate' first (current dashboard key), fallback to 'HR_avg', then 70
+    HR = data.get('Heart_Rate', data.get('HR_avg', 70))
     PR = data.get('PR', 192) 
     QRS = data.get('QRS', 93)
     QT = data.get('QT', 354)
@@ -1079,7 +1081,8 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
 
     # RIGHT SIDE: Vital Parameters at SAME LEVEL as patient info (SHIFTED DOWN)
     # Get real ECG data from dashboard
-    HR = data.get('HR_avg', 70)
+    # Try 'Heart_Rate' first (current dashboard key), fallback to 'HR_avg', then 70
+    HR = data.get('Heart_Rate', data.get('HR_avg', 70))
     PR = data.get('PR', 192) 
     QRS = data.get('QRS', 93)
     QT = data.get('QT', 354)
