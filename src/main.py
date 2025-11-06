@@ -495,10 +495,10 @@ class LoginRegisterDialog(QDialog):
                 self.user_details = record  # Store full user details
                 self.accept()
             else:
-            self.result = True
+                self.result = True
                 self.username = identifier
-            self.user_details = {}
-            self.accept()
+                self.user_details = {}
+                self.accept()
         else:
             QMessageBox.warning(self, "Error", "Invalid credentials. Please check your full name and password.")
 
