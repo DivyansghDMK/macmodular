@@ -2170,14 +2170,14 @@ class ECGTestPage(QWidget):
                         baseline = np.mean(filtered_signal[max(0, r_peak - int(0.15 * fs)):max(0, r_peak - int(0.05 * fs))])
                         # Find where signal returns to baseline
                         t_end_candidates = np.where(np.abs(t_segment - baseline) < 0.15 * std_height)[0]
-                        if len(t_end_candidates) > 0:
+                            if len(t_end_candidates) > 0:
                             t_end = t_search_start + t_end_candidates[-1]
                             qt_ms = (t_end - q_point) / fs * 1000.0
                             if 200 <= qt_ms <= 600:  # Reasonable QT interval
                                 qt_intervals.append(qt_ms)
                 except Exception:
                     continue
-            
+                
             if qt_intervals:
                 return int(round(np.mean(qt_intervals)))
             
@@ -2679,7 +2679,7 @@ class ECGTestPage(QWidget):
         if not hasattr(self, 'serial_reader') or not self.serial_reader or not self.serial_reader.running:
             # Acquisition is stopped/paused - don't update time
             return
-            
+        
         if self.start_time and 'time_elapsed' in self.metric_labels:
             current_time = time.time()
             # Subtract paused duration from elapsed time
@@ -2824,8 +2824,8 @@ class ECGTestPage(QWidget):
         # Get available ports
         try:
             ports = serial.tools.list_ports.comports()
-            for port in ports:
-                port_combo.addItem(port.device)
+                for port in ports:
+                    port_combo.addItem(port.device)
         except Exception as e:
             print(f"Error listing ports: {e}")
         
@@ -2849,7 +2849,7 @@ class ECGTestPage(QWidget):
         # Set current baud rate if available
         current_baud = self.settings_manager.get_baud_rate()
         if current_baud:
-            baud_combo.setCurrentText(current_baud)
+                baud_combo.setCurrentText(current_baud)
         
         baud_layout.addWidget(baud_combo)
         layout.addLayout(baud_layout)
@@ -2913,20 +2913,20 @@ class ECGTestPage(QWidget):
         
         # Show dialog
         dialog.exec_()
-    
+        
     def _save_port_settings(self, dialog, port_combo, baud_combo):
         """Save port settings and close dialog"""
-        selected_port = port_combo.currentText()
-        selected_baud = baud_combo.currentText()
-        
-        if selected_port != "Select Port":
-            self.settings_manager.set_setting("serial_port", selected_port)
-            self.settings_manager.set_setting("baud_rate", selected_baud)
-            print(f"Port settings saved: {selected_port} at {selected_baud} baud")
+            selected_port = port_combo.currentText()
+            selected_baud = baud_combo.currentText()
+            
+            if selected_port != "Select Port":
+                self.settings_manager.set_setting("serial_port", selected_port)
+                self.settings_manager.set_setting("baud_rate", selected_baud)
+                print(f"Port settings saved: {selected_port} at {selected_baud} baud")
             dialog.accept()
-        else:
+            else:
             from PyQt5.QtWidgets import QMessageBox
-            QMessageBox.warning(self, "Invalid Selection", "Please select a valid COM port.")
+                QMessageBox.warning(self, "Invalid Selection", "Please select a valid COM port.")
 
     def refresh_port_combo(self, port_combo):
         """Refresh the port combo box with currently available ports"""
@@ -3562,8 +3562,8 @@ class ECGTestPage(QWidget):
                                 y_max = data_mean + padding
                                 self.axs[i].set_ylim(y_min, y_max)
                             else:
-                                ylim = self.ylim if hasattr(self, 'ylim') else 400
-                                self.axs[i].set_ylim(-ylim, ylim)
+                            ylim = self.ylim if hasattr(self, 'ylim') else 400
+                            self.axs[i].set_ylim(-ylim, ylim)
                             
                             self.axs[i].set_xlim(0, self.buffer_size)
                             
@@ -5832,10 +5832,10 @@ class ECGTestPage(QWidget):
                         continue
                 # Calculate ECG metrics every 2 updates to make it more responsive
                 if self.update_count % 2 == 0:
-                    try:
-                        self.calculate_ecg_metrics()
-                    except Exception as e:
-                        print(f"❌ Error calculating ECG metrics: {e}")
+                try:
+                    self.calculate_ecg_metrics()
+                except Exception as e:
+                    print(f"❌ Error calculating ECG metrics: {e}")
                 try:
                     if hasattr(self, 'heartbeat_counter'):
                         self.heartbeat_counter += 1
