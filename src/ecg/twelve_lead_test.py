@@ -387,91 +387,35 @@ class LiveLeadWindow(QWidget):
             self.line.set_ydata(plot_data)
             self.canvas.draw_idle()
 
-# ------------------------ Calculate P/QRS/T Axes (Medical Standard) ------------------------
-
-def calculate_wave_axis(lead_I, lead_aVF, wave_peaks, fs=500, window_before_ms=40, window_after_ms=60, wave_name="QRS"):
-    """
-    Calculate electrical axis for any wave (P, QRS, or T) using net amplitude method.
-    
-    Medical Standard Method:
-    1. Identify wave peaks in both Lead I and Lead aVF
-    2. Calculate net amplitude (R_amp - S_amp or positive - negative deflection)
-    3. Use arctan2 to find the angle: axis = arctan2(net_aVF, net_Lead_I)
-    
-    Args:
-        lead_I: Lead I signal array
-        lead_aVF: Lead aVF signal array
-        wave_peaks: Indices of wave peaks (P, R, or T peaks)
-        fs: Sampling rate (Hz)
-        window_before_ms: Window before peak (ms)
-        window_after_ms: Window after peak (ms)
-        wave_name: "P", "QRS", or "T" for logging
-    
-    Returns:
-        Axis in degrees (string with ° symbol) or "--" if cannot calculate
-    """
-    if len(lead_I) < 100 or len(lead_aVF) < 100 or len(wave_peaks) == 0:
-        return "--"
-    
-    window_before = int(window_before_ms * fs / 1000)
-    window_after = int(window_after_ms * fs / 1000)
-    
-    net_amplitudes_I = []
-    net_amplitudes_aVF = []
-    
-    for peak in wave_peaks:
-        start = max(0, peak - window_before)
-        end = min(len(lead_I), peak + window_after)
-        
-        if end > start:
-            # Calculate net amplitude (positive - negative) for Lead I
-            segment_I = lead_I[start:end]
-            baseline_I = np.mean(lead_I[max(0, start - int(0.05 * fs)):start])
-            net_I = np.max(segment_I) - np.min(segment_I)  # Peak-to-peak (R - S)
-            net_amplitudes_I.append(net_I)
-            
-            # Calculate net amplitude (positive - negative) for Lead aVF
-            segment_aVF = lead_aVF[start:end]
-            baseline_aVF = np.mean(lead_aVF[max(0, start - int(0.05 * fs)):start])
-            net_aVF = np.max(segment_aVF) - np.min(segment_aVF)  # Peak-to-peak
-            net_amplitudes_aVF.append(net_aVF)
-    
-    if len(net_amplitudes_I) == 0:
-        return "--"
-    
-    # Average net amplitudes across all beats
-    mean_net_I = np.mean(net_amplitudes_I)
-    mean_net_aVF = np.mean(net_amplitudes_aVF)
-    
-    # Calculate axis using arctan2 (medical standard formula)
-    axis_rad = np.arctan2(mean_net_aVF, mean_net_I)
-    axis_deg = np.degrees(axis_rad)
-    
-    # Normalize to 0-360° range
-    if axis_deg < 0:
-        axis_deg += 360
-    
-    print(f"✅ {wave_name}-axis calculated: {axis_deg:.1f}° (Lead I net: {mean_net_I:.2f}, aVF net: {mean_net_aVF:.2f})")
-    
-    return f"{int(axis_deg)}°"
+# ------------------------ Calculate QRS axis ------------------------
 
 def calculate_qrs_axis(lead_I, lead_aVF, r_peaks, fs=500, window_ms=100):
     """
-    Calculate QRS axis using net amplitude method (medical standard).
-    Uses arctan2(net_aVF, net_Lead_I) for accurate axis calculation.
+    Calculate QRS axis using net area of QRS complex around R peaks.
+    - lead_I, lead_aVF: arrays of samples
+    - r_peaks: indices of R peaks
+    - fs: sampling rate
+    - window_ms: window size around R peak (default 100 ms)
     """
-    return calculate_wave_axis(lead_I, lead_aVF, r_peaks, fs, 
-                               window_before_ms=50, window_after_ms=50, wave_name="QRS")
-
-def calculate_p_axis(lead_I, lead_aVF, p_peaks, fs=500):
-    """Calculate P-wave axis using net amplitude method."""
-    return calculate_wave_axis(lead_I, lead_aVF, p_peaks, fs,
-                               window_before_ms=20, window_after_ms=60, wave_name="P")
-
-def calculate_t_axis(lead_I, lead_aVF, t_peaks, fs=500):
-    """Calculate T-wave axis using net amplitude method."""
-    return calculate_wave_axis(lead_I, lead_aVF, t_peaks, fs,
-                               window_before_ms=40, window_after_ms=80, wave_name="T")
+    if len(lead_I) < 100 or len(lead_aVF) < 100 or len(r_peaks) == 0:
+        return "--"
+    window = int(window_ms * fs / 1000)
+    net_I = []
+    net_aVF = []
+    for r in r_peaks:
+        start = max(0, r - window//2)
+        end = min(len(lead_I), r + window//2)
+        net_I.append(np.sum(lead_I[start:end]))
+        net_aVF.append(np.sum(lead_aVF[start:end]))
+    if len(net_I) == 0:
+        return "--"
+    mean_I = np.mean(net_I)
+    mean_aVF = np.mean(net_aVF)
+    axis_rad = np.arctan2(mean_aVF, mean_I)
+    axis_deg = np.degrees(axis_rad)
+    if axis_deg < 0:
+        axis_deg += 360
+    return f"{axis_deg:.0f}°"
 
 def calculate_st_segment(lead_signal, r_peaks, fs=500, j_offset_ms=40, st_offset_ms=80):
     """
@@ -2060,66 +2004,20 @@ class ECGTestPage(QWidget):
             return 0
     
     def calculate_qrs_axis(self):
-        """
-        Calculate QRS axis from leads I and aVF using medical standard method.
-        Uses net amplitude (R-S) in both leads with arctan2 formula.
-        """
+        """Calculate QRS axis from leads I and aVF"""
         try:
-            if len(self.data) < 6:  # Need leads I (index 0) and aVF (index 5)
+            if len(self.data) < 6:  # Need leads I and aVF
                 return 0
             
-            lead_I_data = self.data[0]
-            lead_aVF_data = self.data[5]
+            # Get current values from leads I and aVF
+            lead_i = self.data[0][-1] if len(self.data[0]) > 0 else 0
+            lead_avf = self.data[5][-1] if len(self.data[5]) > 0 else 0
             
-            # Check for real signal
-            if len(lead_I_data) < 200 or len(lead_aVF_data) < 200:
-                return 0
-            if np.all(lead_I_data == 0) or np.all(lead_aVF_data == 0):
-                return 0
-            if np.std(lead_I_data) < 0.1 or np.std(lead_aVF_data) < 0.1:
-                return 0
-            
-            # Get sampling rate
-            fs = 250
-            if hasattr(self, 'sampler') and hasattr(self.sampler, 'sampling_rate'):
-                fs = float(self.sampler.sampling_rate)
-            
-            # Detect R-peaks in Lead II for timing reference
-            lead_ii_data = self.data[1] if len(self.data) > 1 else None
-            if lead_ii_data is None or len(lead_ii_data) < 200:
-                return 0
-            
-            from scipy.signal import butter, filtfilt, find_peaks
-            
-            # Filter Lead II to find R-peaks
-            nyquist = fs / 2
-            low = max(0.001, 0.5 / nyquist)
-            high = min(0.999, 40 / nyquist)
-            b, a = butter(2, [low, high], btype='band')
-            filtered_ii = filtfilt(b, a, lead_ii_data)
-            
-            # Detect R-peaks using Pan-Tompkins approach
-            squared = np.square(np.diff(filtered_ii))
-            integrated = np.convolve(squared, np.ones(int(0.15 * fs)) / (0.15 * fs), mode='same')
-            threshold = np.mean(integrated) + 0.5 * np.std(integrated)
-            r_peaks, _ = find_peaks(integrated, height=threshold, distance=int(0.6 * fs))
-            
-            if len(r_peaks) < 2:
-                return 0
-            
-            # Calculate QRS axis using the medical standard function
-            # This uses net amplitude (R-S) in Lead I and aVF with arctan2
-            axis_str = calculate_qrs_axis(lead_I_data, lead_aVF_data, r_peaks, fs)
-            
-            # Extract numeric value from string (e.g., "45°" -> 45)
-            try:
-                axis_value = int(axis_str.replace('°', ''))
-                return axis_value
-            except:
-                return 0
-                
-        except Exception as e:
-            print(f"❌ Error calculating QRS axis: {e}")
+            # Calculate QRS axis (simplified)
+            # Normal axis is between -30° and +90°
+            axis = int(np.arctan2(lead_avf, lead_i) * 180 / np.pi)
+            return axis
+        except:
             return 0
 
     def calculate_st_interval(self, lead_data):
@@ -2254,7 +2152,7 @@ class ECGTestPage(QWidget):
                 return 0
             
             qt_intervals = []
-            for r_peak in peaks[:min(5, len(peaks))]:
+                for r_peak in peaks[:min(5, len(peaks))]:
                 try:
                     # Find Q-point (min before R, within 40ms)
                     q_start = max(0, r_peak - int(0.04 * fs))
@@ -2272,7 +2170,7 @@ class ECGTestPage(QWidget):
                         baseline = np.mean(filtered_signal[max(0, r_peak - int(0.15 * fs)):max(0, r_peak - int(0.05 * fs))])
                         # Find where signal returns to baseline
                         t_end_candidates = np.where(np.abs(t_segment - baseline) < 0.15 * std_height)[0]
-                        if len(t_end_candidates) > 0:
+                            if len(t_end_candidates) > 0:
                             t_end = t_search_start + t_end_candidates[-1]
                             qt_ms = (t_end - q_point) / fs * 1000.0
                             if 200 <= qt_ms <= 600:  # Reasonable QT interval
@@ -2288,21 +2186,7 @@ class ECGTestPage(QWidget):
             return 0
 
     def calculate_qtc_interval(self, heart_rate, qt_interval):
-        """
-        Calculate QTc using Bazett's formula: QTc = QT / sqrt(RR_seconds)
-        
-        Args:
-            heart_rate: Heart rate in bpm
-            qt_interval: QT interval in milliseconds
-        
-        Returns:
-            QTc interval in milliseconds
-        
-        Example:
-            QT = 438 ms, HR = 90 bpm
-            RR = 60/90 = 0.667 seconds
-            QTc = 438 / sqrt(0.667) = 438 / 0.817 = 536 ms
-        """
+        """Calculate QTc using Bazett's formula: QTc = QT / sqrt(RR)"""
         try:
             if not heart_rate or heart_rate <= 0:
                 return 0
@@ -2311,16 +2195,16 @@ class ECGTestPage(QWidget):
                 return 0
             
             # Calculate RR interval from heart rate (in seconds)
-            rr_seconds = 60.0 / heart_rate
+            rr_interval = 60.0 / heart_rate
             
-            # Apply Bazett's formula: QTc = QT_ms / sqrt(RR_seconds)
-            # QT stays in ms, divide by sqrt of RR in seconds
-            qtc_ms = qt_interval / np.sqrt(rr_seconds)
+            # QT in seconds
+            qt_sec = qt_interval / 1000.0
             
-            # Round to integer
-            qtc_ms = int(round(qtc_ms))
+            # Apply Bazett's formula: QTc = QT / sqrt(RR)
+            qtc = qt_sec / np.sqrt(rr_interval)
             
-            print(f"✅ QTc Bazett: QT={qt_interval}ms, HR={heart_rate}bpm, RR={rr_seconds:.3f}s → QTc={qtc_ms}ms")
+            # Convert back to milliseconds
+            qtc_ms = int(round(qtc * 1000))
             
             return qtc_ms
             
@@ -2940,8 +2824,8 @@ class ECGTestPage(QWidget):
         # Get available ports
         try:
             ports = serial.tools.list_ports.comports()
-            for port in ports:
-                port_combo.addItem(port.device)
+                for port in ports:
+                    port_combo.addItem(port.device)
         except Exception as e:
             print(f"Error listing ports: {e}")
         
@@ -3032,17 +2916,17 @@ class ECGTestPage(QWidget):
         
     def _save_port_settings(self, dialog, port_combo, baud_combo):
         """Save port settings and close dialog"""
-        selected_port = port_combo.currentText()
-        selected_baud = baud_combo.currentText()
-        
-        if selected_port != "Select Port":
-            self.settings_manager.set_setting("serial_port", selected_port)
-            self.settings_manager.set_setting("baud_rate", selected_baud)
-            print(f"Port settings saved: {selected_port} at {selected_baud} baud")
+            selected_port = port_combo.currentText()
+            selected_baud = baud_combo.currentText()
+            
+            if selected_port != "Select Port":
+                self.settings_manager.set_setting("serial_port", selected_port)
+                self.settings_manager.set_setting("baud_rate", selected_baud)
+                print(f"Port settings saved: {selected_port} at {selected_baud} baud")
             dialog.accept()
-        else:
+            else:
             from PyQt5.QtWidgets import QMessageBox
-            QMessageBox.warning(self, "Invalid Selection", "Please select a valid COM port.")
+                QMessageBox.warning(self, "Invalid Selection", "Please select a valid COM port.")
 
     def refresh_port_combo(self, port_combo):
         """Refresh the port combo box with currently available ports"""
@@ -3678,8 +3562,8 @@ class ECGTestPage(QWidget):
                                 y_max = data_mean + padding
                                 self.axs[i].set_ylim(y_min, y_max)
                             else:
-                                ylim = self.ylim if hasattr(self, 'ylim') else 400
-                                self.axs[i].set_ylim(-ylim, ylim)
+                            ylim = self.ylim if hasattr(self, 'ylim') else 400
+                            self.axs[i].set_ylim(-ylim, ylim)
                             
                             self.axs[i].set_xlim(0, self.buffer_size)
                             
@@ -5948,10 +5832,10 @@ class ECGTestPage(QWidget):
                         continue
                 # Calculate ECG metrics every 2 updates to make it more responsive
                 if self.update_count % 2 == 0:
-                    try:
-                        self.calculate_ecg_metrics()
-                    except Exception as e:
-                        print(f"❌ Error calculating ECG metrics: {e}")
+                try:
+                    self.calculate_ecg_metrics()
+                except Exception as e:
+                    print(f"❌ Error calculating ECG metrics: {e}")
                 try:
                     if hasattr(self, 'heartbeat_counter'):
                         self.heartbeat_counter += 1

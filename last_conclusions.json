@@ -1,10 +1,14 @@
 {
-  "timestamp": "2025-11-04 18:07:55",
+  "timestamp": "2025-11-07 15:54:12",
   "findings": [
+    "Rhythm Interpretation",
     "Normal heart rate",
     "Normal PR interval",
     "Normal QRS duration",
-    "Good heart rate variability"
+    "Low HRV"
   ],
-  "recommendations": []
+  "recommendations": [
+    "Review arrhythmia finding in Rhythm Interpretation panel",
+    "Ensure adequate rest and stress management"
+  ]
 }
