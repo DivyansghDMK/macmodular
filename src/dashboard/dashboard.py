@@ -598,6 +598,101 @@ class Dashboard(QWidget):
         schedule_label.setFont(QFont("Arial", 14, QFont.Bold))
         schedule_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         schedule_layout.addWidget(schedule_label)
+        
+        # Add custom month/year selector (like macOS Calendar)
+        calendar_header = QHBoxLayout()
+        calendar_header.setContentsMargins(8, 4, 8, 4)
+        
+        # Month dropdown
+        self.month_combo = QComboBox()
+        months = ["January", "February", "March", "April", "May", "June",
+                  "July", "August", "September", "October", "November", "December"]
+        self.month_combo.addItems(months)
+        self.month_combo.setCurrentIndex(datetime.now().month - 1)
+        self.month_combo.setStyleSheet("""
+            QComboBox {
+                background: white;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                padding: 4px 8px;
+                font-size: 12px;
+                min-width: 100px;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 20px;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 6px solid #666;
+                margin-right: 6px;
+            }
+            QComboBox:hover {
+                background: #f0f0f0;
+            }
+        """)
+        
+        # Year dropdown
+        self.year_combo = QComboBox()
+        current_year = datetime.now().year
+        for year in range(current_year - 5, current_year + 5):
+            self.year_combo.addItem(str(year))
+        self.year_combo.setCurrentText(str(current_year))
+        self.year_combo.setStyleSheet("""
+            QComboBox {
+                background: white;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                padding: 4px 8px;
+                font-size: 12px;
+                min-width: 70px;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 20px;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 6px solid #666;
+                margin-right: 6px;
+            }
+            QComboBox:hover {
+                background: #f0f0f0;
+            }
+        """)
+        
+        # Connect to calendar update
+        self.month_combo.currentIndexChanged.connect(self.update_calendar_month_year)
+        self.year_combo.currentIndexChanged.connect(self.update_calendar_month_year)
+        
+        calendar_header.addWidget(self.month_combo)
+        calendar_header.addWidget(self.year_combo)
+        calendar_header.addStretch()
+        
+        # Today button
+        today_btn = QPushButton("Today")
+        today_btn.setStyleSheet("""
+            QPushButton {
+                background: #ff6600;
+                color: white;
+                border-radius: 6px;
+                padding: 4px 12px;
+                font-size: 11px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #ff7a26;
+            }
+        """)
+        today_btn.clicked.connect(self.go_to_today)
+        calendar_header.addWidget(today_btn)
+        
+        schedule_layout.addLayout(calendar_header)
+        
         self.schedule_calendar = QCalendarWidget()
         self.schedule_calendar.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.schedule_calendar.setMinimumHeight(180)
@@ -923,6 +1018,54 @@ class Dashboard(QWidget):
             self.refresh_recent_reports_ui(self.reports_filter_date)
         except Exception:
             pass
+    
+    def update_calendar_month_year(self):
+        """Update calendar when month or year dropdown changes"""
+        try:
+            from PyQt5.QtCore import QDate
+            import datetime
+            
+            months = ["January", "February", "March", "April", "May", "June",
+                      "July", "August", "September", "October", "November", "December"]
+            
+            month = self.month_combo.currentIndex() + 1  # 1-12
+            year = int(self.year_combo.currentText())
+            
+            # Get current selected day (or 1st if invalid)
+            current_date = self.schedule_calendar.selectedDate()
+            day = current_date.day() if current_date.day() <= 28 else 1
+            
+            # Create new date
+            new_date = QDate(year, month, day)
+            
+            # Update calendar
+            self.schedule_calendar.setSelectedDate(new_date)
+            self.schedule_calendar.showSelectedDate()
+            
+            print(f"📅 Calendar updated to: {months[month-1]} {year}")
+        except Exception as e:
+            print(f"❌ Error updating calendar: {e}")
+    
+    def go_to_today(self):
+        """Jump calendar to today's date"""
+        try:
+            from PyQt5.QtCore import QDate
+            import datetime
+            
+            today = datetime.datetime.now()
+            
+            # Update dropdowns
+            self.month_combo.setCurrentIndex(today.month - 1)
+            self.year_combo.setCurrentText(str(today.year))
+            
+            # Update calendar
+            today_date = QDate(today.year, today.month, today.day)
+            self.schedule_calendar.setSelectedDate(today_date)
+            self.schedule_calendar.showSelectedDate()
+            
+            print(f"📅 Jumped to today: {today.strftime('%Y-%m-%d')}")
+        except Exception as e:
+            print(f"❌ Error jumping to today: {e}")
 
     def on_calendar_page_changed(self, year, month):
         """Handle calendar page change - disabled dropdown functionality"""
