@@ -152,6 +152,18 @@ class Dashboard(QWidget):
         self.crash_logger = get_crash_logger()
         self.crash_logger.log_info("Dashboard initialized", "DASHBOARD_START")
         
+        # ========================================
+        # START AUTOMATIC BACKGROUND CLOUD SYNC
+        # ========================================
+        # This service runs in background and syncs every 5 seconds
+        try:
+            from utils.auto_sync_service import start_auto_sync
+            self.auto_sync_service = start_auto_sync(interval_seconds=5)
+            print("✅ Automatic cloud sync started (every 5 seconds)")
+        except Exception as e:
+            print(f"⚠️  Could not start auto-sync service: {e}")
+            self.auto_sync_service = None
+        
         # Triple-click counter for heart rate metric
         self.heart_rate_click_count = 0
         self.last_heart_rate_click_time = 0
