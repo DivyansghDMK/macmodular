@@ -362,28 +362,72 @@ class AdminReportsDialog(QDialog):
         hh.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         hh.setSectionResizeMode(5, QHeaderView.ResizeToContents)
         hh.setSectionResizeMode(6, QHeaderView.ResizeToContents)
-        layout.addWidget(self.users_table)
         
-        # User details panel - Enhanced with more space
-        details_frame = QFrame()
-        details_frame.setStyleSheet("""
+        # Main horizontal split: Table (left) + Sidebar (right)
+        main_horizontal = QHBoxLayout()
+        main_horizontal.setSpacing(16)
+        
+        # Left side: Full-page user table
+        table_container = QFrame()
+        table_container.setStyleSheet("""
+            QFrame {
+                background: white;
+                border-radius: 12px;
+                border: 1px solid #e0e0e0;
+                padding: 0px;
+            }
+        """)
+        table_layout = QVBoxLayout(table_container)
+        table_layout.setContentsMargins(0, 0, 0, 0)
+        table_layout.addWidget(self.users_table)
+        main_horizontal.addWidget(table_container, 2)  # Table takes 2/3 of width
+        
+        # Right side: Collapsible sidebar for patient details
+        self.sidebar_frame = QFrame()
+        self.sidebar_frame.setStyleSheet("""
             QFrame {
                 background: white;
                 border-radius: 12px;
                 border: 2px solid #ff6600;
-                padding: 12px;
+                padding: 16px;
             }
         """)
-        details_layout = QVBoxLayout(details_frame)
-        details_layout.setSpacing(8)
+        self.sidebar_frame.setMinimumWidth(400)
+        self.sidebar_frame.setMaximumWidth(500)
+        self.sidebar_frame.setVisible(False)  # Hidden by default until user clicks
         
-        details_label = QLabel("📊 Patient Details & ECG Metrics")
-        details_label.setStyleSheet("font-weight:bold;color:#ff6600;font-size:14px;")
-        details_layout.addWidget(details_label)
+        sidebar_layout = QVBoxLayout(self.sidebar_frame)
+        sidebar_layout.setSpacing(12)
+        sidebar_layout.setContentsMargins(0, 0, 0, 0)
         
+        # Sidebar header with close button
+        sidebar_header = QHBoxLayout()
+        sidebar_title = QLabel("📊 Patient Details")
+        sidebar_title.setStyleSheet("font-weight:bold;color:#ff6600;font-size:16px;")
+        sidebar_header.addWidget(sidebar_title)
+        
+        self.close_sidebar_btn = QPushButton("✕")
+        self.close_sidebar_btn.setFixedSize(32, 32)
+        self.close_sidebar_btn.setStyleSheet("""
+            QPushButton {
+                background: #f44336;
+                color: white;
+                border-radius: 16px;
+                font-size: 18px;
+                font-weight: bold;
+                border: none;
+            }
+            QPushButton:hover {
+                background: #d32f2f;
+            }
+        """)
+        self.close_sidebar_btn.clicked.connect(self.close_sidebar)
+        sidebar_header.addWidget(self.close_sidebar_btn)
+        sidebar_layout.addLayout(sidebar_header)
+        
+        # Scrollable patient details
         self.user_details_text = QTextEdit()
         self.user_details_text.setReadOnly(True)
-        self.user_details_text.setMinimumHeight(400)  # Increased height for metrics and reports
         self.user_details_text.setStyleSheet("""
             QTextEdit {
                 background: #fafafa;
@@ -393,9 +437,11 @@ class AdminReportsDialog(QDialog):
                 font-size: 13px;
             }
         """)
-        details_layout.addWidget(self.user_details_text)
+        sidebar_layout.addWidget(self.user_details_text)
         
-        layout.addWidget(details_frame)
+        main_horizontal.addWidget(self.sidebar_frame, 1)  # Sidebar takes 1/3 of width
+        
+        layout.addLayout(main_horizontal)
         
         # Connect signals
         self.user_refresh_btn.clicked.connect(self.load_users)
@@ -890,6 +936,9 @@ class AdminReportsDialog(QDialog):
                 </div>
             """)
             
+            # Show sidebar with animation
+            self.sidebar_frame.setVisible(True)
+            
             # Process user selection
             from PyQt5.QtCore import QTimer
             QTimer.singleShot(50, lambda: self._load_user_details_async(user))
@@ -897,6 +946,11 @@ class AdminReportsDialog(QDialog):
         except Exception as e:
             import traceback
             self.user_details_text.setPlainText(f"Error loading details: {e}\n\n{traceback.format_exc()}")
+    
+    def close_sidebar(self):
+        """Close the patient details sidebar"""
+        self.sidebar_frame.setVisible(False)
+        self.users_table.clearSelection()
     
     def _load_user_details_async(self, user):
         """Load user details asynchronously to prevent UI freeze"""
