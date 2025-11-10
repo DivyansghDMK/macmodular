@@ -157,14 +157,15 @@ class AdminReportsDialog(QDialog):
         header.addWidget(self.copy_url_btn)
         layout.addLayout(header)
 
-        # Summary cards
+        # Summary cards - Modern design with icons and colors
         cards = QHBoxLayout()
-        self.count_card = self._metric_card("Total Files", "0")
-        self.size_card = self._metric_card("Total Size", "0 KB")
-        self.latest_card = self._metric_card("Latest Upload", "–")
-        cards.addWidget(self.count_card)
-        cards.addWidget(self.size_card)
-        cards.addWidget(self.latest_card)
+        cards.setSpacing(16)
+        self.count_card = self._metric_card("Total Files", "0", "📄", "#9C27B0")
+        self.size_card = self._metric_card("Total Size", "0 KB", "💾", "#FF9800")
+        self.latest_card = self._metric_card("Latest Upload", "–", "🕒", "#00BCD4")
+        cards.addWidget(self.count_card, 1)
+        cards.addWidget(self.size_card, 1)
+        cards.addWidget(self.latest_card, 1)
         layout.addLayout(cards)
 
         self.table = QTableWidget(0, 5)
@@ -290,12 +291,13 @@ class AdminReportsDialog(QDialog):
         header.addWidget(self.link_report_btn)
         layout.addLayout(header)
         
-        # Summary cards for users
+        # Summary cards for users - Modern design with icons and colors
         cards = QHBoxLayout()
-        self.users_count_card = self._metric_card("Total Users", "0")
-        self.latest_user_card = self._metric_card("Latest Registration", "–")
-        cards.addWidget(self.users_count_card)
-        cards.addWidget(self.latest_user_card)
+        cards.setSpacing(16)
+        self.users_count_card = self._metric_card("Total Users", "0", "👥", "#4CAF50")
+        self.latest_user_card = self._metric_card("Latest Registration", "–", "📅", "#2196F3")
+        cards.addWidget(self.users_count_card, 1)
+        cards.addWidget(self.latest_user_card, 1)
         cards.addStretch()
         layout.addLayout(cards)
         
@@ -406,33 +408,95 @@ class AdminReportsDialog(QDialog):
         
         return tab
 
-    def _metric_card(self, title: str, value: str) -> QFrame:
+    def _metric_card(self, title: str, value: str, icon: str = "📊", color: str = "#ff6600") -> QFrame:
+        """Create a modern, professional metric card with icon and gradient"""
         frame = QFrame()
-        frame.setStyleSheet("""
-            QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #ffffff, stop:1 #f8f9fa);
-                border-radius: 12px;
-                border: 2px solid #ff6600;
-                padding: 16px;
-            }
-            QLabel {
-                color: #333;
-                background: transparent;
-            }
+        frame.setStyleSheet(f"""
+            QFrame {{
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #ffffff, stop:0.5 {color}08, stop:1 {color}15);
+                border-radius: 16px;
+                border: none;
+                padding: 0px;
+            }}
+            QFrame:hover {{
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #ffffff, stop:0.5 {color}12, stop:1 {color}20);
+            }}
         """)
+        
+        # Add subtle shadow effect
+        from PyQt5.QtWidgets import QGraphicsDropShadowEffect
+        from PyQt5.QtGui import QColor
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(20)
+        shadow.setXOffset(0)
+        shadow.setYOffset(4)
+        shadow.setColor(QColor(0, 0, 0, 30))
+        frame.setGraphicsEffect(shadow)
+        
         v = QVBoxLayout(frame)
-        v.setSpacing(8)
-        v.setContentsMargins(12, 12, 12, 12)
-        t = QLabel(title)
-        t.setStyleSheet("font-weight:bold;color:#ff6600;font-size:12px;")
+        v.setSpacing(12)
+        v.setContentsMargins(20, 20, 20, 20)
+        
+        # Top row: Icon + Title
+        top_row = QHBoxLayout()
+        top_row.setSpacing(8)
+        
+        icon_label = QLabel(icon)
+        icon_label.setStyleSheet(f"""
+            font-size: 32px;
+            background: {color};
+            border-radius: 12px;
+            padding: 8px;
+            min-width: 48px;
+            max-width: 48px;
+            min-height: 48px;
+            max-height: 48px;
+        """)
+        icon_label.setAlignment(Qt.AlignCenter)
+        top_row.addWidget(icon_label)
+        
+        title_label = QLabel(title)
+        title_label.setStyleSheet(f"""
+            font-weight: bold;
+            color: #666;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            background: transparent;
+        """)
+        title_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        top_row.addWidget(title_label, 1)
+        
+        v.addLayout(top_row)
+        
+        # Value with accent bar
+        value_container = QFrame()
+        value_container.setStyleSheet(f"""
+            QFrame {{
+                background: transparent;
+                border-left: 4px solid {color};
+                padding-left: 12px;
+            }}
+        """)
+        value_layout = QVBoxLayout(value_container)
+        value_layout.setContentsMargins(0, 0, 0, 0)
+        
         val = QLabel(value)
-        val.setStyleSheet("font-size:24px;font-weight:bold;color:#333;")
-        v.addWidget(t)
-        v.addWidget(val)
-        v.addStretch(1)
+        val.setStyleSheet(f"""
+            font-size: 36px;
+            font-weight: bold;
+            color: {color};
+            background: transparent;
+        """)
+        val.setAlignment(Qt.AlignLeft)
+        value_layout.addWidget(val)
+        
+        v.addWidget(value_container)
+        
         frame._value_label = val
-        frame.setMinimumHeight(100)
+        frame.setMinimumHeight(140)
         return frame
 
     def load_items(self):
