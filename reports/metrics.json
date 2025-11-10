@@ -561,5 +561,47 @@
       1.74,
       0.9
     ]
+  },
+  {
+    "timestamp": "2025-11-07 17:59:14",
+    "file": "/Users/deckmount/Downloads/modularecg-main/ECG_Report_20251107_175910.pdf",
+    "HR_bpm": 0,
+    "PR_ms": 0,
+    "QRS_ms": 0,
+    "QT_ms": 0,
+    "QTc_ms": 0,
+    "ST_ms": 0,
+    "RR_ms": 0,
+    "Sokolow_Lyon_mV": 2.05,
+    "P_QRS_T_axes_deg": [
+      "--",
+      "--",
+      "--"
+    ],
+    "RV5_SV1_mV": [
+      1.26,
+      0.79
+    ]
+  },
+  {
+    "timestamp": "2025-11-10 09:52:38",
+    "file": "/Users/deckmount/Downloads/ECG_Report_20251110_095230.pdf",
+    "HR_bpm": 60,
+    "PR_ms": 160,
+    "QRS_ms": 85,
+    "QT_ms": 360,
+    "QTc_ms": 380,
+    "ST_ms": 0,
+    "RR_ms": 1000,
+    "Sokolow_Lyon_mV": 2.92,
+    "P_QRS_T_axes_deg": [
+      "--",
+      "5",
+      "--"
+    ],
+    "RV5_SV1_mV": [
+      1.75,
+      1.16
+    ]
   }
 ]

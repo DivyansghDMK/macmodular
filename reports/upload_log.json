@@ -3669,5 +3669,68 @@
       "machine_serial": "",
       "heart_rate": ""
     }
+  },
+  {
+    "local_path": "/Users/deckmount/Downloads/modularecg-main/ECG_Report_20251107_175910.pdf",
+    "uploaded_at": "2025-11-07T17:59:16.190610",
+    "service": "s3",
+    "result": {
+      "status": "success",
+      "service": "s3",
+      "url": "https://ecg-reports-deckmount-new.s3.us-east-1.amazonaws.com/ecg-reports/2025/11/07/ECG_Report_20251107_175910.pdf",
+      "key": "ecg-reports/2025/11/07/ECG_Report_20251107_175910.pdf",
+      "bucket": "ecg-reports-deckmount-new"
+    },
+    "metadata": {
+      "filename": "ECG_Report_20251107_175910.pdf",
+      "uploaded_at": "2025-11-07T17:59:14.492480",
+      "file_size": 17523,
+      "file_type": ".pdf",
+      "patient_name": "Unknown",
+      "patient_age": "",
+      "report_date": "",
+      "machine_serial": "",
+      "heart_rate": ""
+    }
+  },
+  {
+    "local_path": "user_signup_1234_20251110_095135.json",
+    "uploaded_at": "2025-11-10T09:51:36.901585",
+    "service": "s3",
+    "result": {
+      "status": "success",
+      "service": "s3",
+      "url": "https://ecg-reports-deckmount-new.s3.us-east-1.amazonaws.com/ecg-reports/2025/11/10/user_signup_1234_20251110_095135.json",
+      "key": "ecg-reports/2025/11/10/user_signup_1234_20251110_095135.json",
+      "bucket": "ecg-reports-deckmount-new"
+    },
+    "metadata": {
+      "type": "user_signup",
+      "username": "1234",
+      "uploaded_at": "2025-11-10T09:51:35.851727"
+    }
+  },
+  {
+    "local_path": "/Users/deckmount/Downloads/ECG_Report_20251110_095230.pdf",
+    "uploaded_at": "2025-11-10T09:52:40.710191",
+    "service": "s3",
+    "result": {
+      "status": "success",
+      "service": "s3",
+      "url": "https://ecg-reports-deckmount-new.s3.us-east-1.amazonaws.com/ecg-reports/2025/11/10/ECG_Report_20251110_095230.pdf",
+      "key": "ecg-reports/2025/11/10/ECG_Report_20251110_095230.pdf",
+      "bucket": "ecg-reports-deckmount-new"
+    },
+    "metadata": {
+      "filename": "ECG_Report_20251110_095230.pdf",
+      "uploaded_at": "2025-11-10T09:52:38.936831",
+      "file_size": 96189,
+      "file_type": ".pdf",
+      "patient_name": "Unknown",
+      "patient_age": "",
+      "report_date": "",
+      "machine_serial": "",
+      "heart_rate": ""
+    }
   }
 ]

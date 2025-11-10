@@ -54,7 +54,15 @@ class AdminReportsDialog(QDialog):
         super().__init__(parent)
         self.cloud_uploader = cloud_uploader
         self.setWindowTitle("Admin Dashboard - Reports & Users (S3)")
-        self.resize(1200, 750)
+        self.resize(1400, 850)  # Increased size for better viewing
+        
+        # Apply modern window styling
+        self.setStyleSheet("""
+            QDialog {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #f8f9fa, stop:1 #e9ecef);
+            }
+        """)
 
         layout = QVBoxLayout(self)
         
@@ -354,16 +362,38 @@ class AdminReportsDialog(QDialog):
         hh.setSectionResizeMode(6, QHeaderView.ResizeToContents)
         layout.addWidget(self.users_table)
         
-        # User details panel
-        details_label = QLabel("User Details:")
-        details_label.setStyleSheet("font-weight:bold;color:#ff6600;margin-top:10px;")
-        layout.addWidget(details_label)
+        # User details panel - Enhanced with more space
+        details_frame = QFrame()
+        details_frame.setStyleSheet("""
+            QFrame {
+                background: white;
+                border-radius: 12px;
+                border: 2px solid #ff6600;
+                padding: 12px;
+            }
+        """)
+        details_layout = QVBoxLayout(details_frame)
+        details_layout.setSpacing(8)
+        
+        details_label = QLabel("📊 Patient Details & ECG Metrics")
+        details_label.setStyleSheet("font-weight:bold;color:#ff6600;font-size:14px;")
+        details_layout.addWidget(details_label)
         
         self.user_details_text = QTextEdit()
         self.user_details_text.setReadOnly(True)
-        self.user_details_text.setMaximumHeight(150)
-        self.user_details_text.setStyleSheet("background:#f9f9f9;border:1px solid #ddd;border-radius:8px;padding:8px;")
-        layout.addWidget(self.user_details_text)
+        self.user_details_text.setMinimumHeight(400)  # Increased height for metrics and reports
+        self.user_details_text.setStyleSheet("""
+            QTextEdit {
+                background: #fafafa;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                padding: 12px;
+                font-size: 13px;
+            }
+        """)
+        details_layout.addWidget(self.user_details_text)
+        
+        layout.addWidget(details_frame)
         
         # Connect signals
         self.user_refresh_btn.clicked.connect(self.load_users)
@@ -421,6 +451,9 @@ class AdminReportsDialog(QDialog):
             QMessageBox.critical(self, "Error", f"Failed to list reports: {result.get('message')}")
             return
         self._all_items = result.get('items', [])
+        
+        # Cache reports globally for patient lookup
+        self._cached_reports = self._all_items
         
         import time
         self._last_load_time = time.time()
@@ -775,7 +808,7 @@ class AdminReportsDialog(QDialog):
         self.latest_user_card._value_label.setText(latest_dt)
     
     def show_user_details(self, row, col):
-        """Show detailed information for selected user - OPTIMIZED"""
+        """Show detailed information for selected user with ECG metrics and reports"""
         try:
             users = getattr(self, '_filtered_users', [])
             if row < 0 or row >= len(users):
@@ -783,59 +816,180 @@ class AdminReportsDialog(QDialog):
             
             user = users[row]
             
-            # Format user details as HTML with modern styling
-            html = """
-            <div style='font-family:Arial; padding:12px; background:#f9f9f9; border-radius:8px;'>
-                <div style='background:linear-gradient(135deg, #ff6600 0%, #ff8533 100%); 
-                            padding:12px; border-radius:8px; margin-bottom:12px;'>
-                    <b style='color:white; font-size:16px;'>👤 {full_name}</b>
-                </div>
-                <table style='width:100%; font-size:13px;'>
-                    <tr style='background:#fff5e6;'>
-                        <td style='padding:8px; font-weight:bold; width:40%;'>Username:</td>
-                        <td style='padding:8px;'>{username}</td>
-                    </tr>
-                    <tr>
-                        <td style='padding:8px; font-weight:bold;'>Phone:</td>
-                        <td style='padding:8px;'>{phone}</td>
-                    </tr>
-                    <tr style='background:#fff5e6;'>
-                        <td style='padding:8px; font-weight:bold;'>Age:</td>
-                        <td style='padding:8px;'>{age}</td>
-                    </tr>
-                    <tr>
-                        <td style='padding:8px; font-weight:bold;'>Gender:</td>
-                        <td style='padding:8px;'>{gender}</td>
-                    </tr>
-                    <tr style='background:#fff5e6;'>
-                        <td style='padding:8px; font-weight:bold;'>Address:</td>
-                        <td style='padding:8px;'>{address}</td>
-                    </tr>
-                    <tr>
-                        <td style='padding:8px; font-weight:bold;'>Machine Serial:</td>
-                        <td style='padding:8px;'>{serial}</td>
-                    </tr>
-                    <tr style='background:#fff5e6;'>
-                        <td style='padding:8px; font-weight:bold;'>Registered:</td>
-                        <td style='padding:8px;'>{registered}</td>
-                    </tr>
-                </table>
-            </div>
-            """.format(
-                full_name=user.get('full_name', 'N/A'),
-                username=user.get('username', 'N/A'),
-                phone=user.get('phone', 'N/A'),
-                age=user.get('age', 'N/A'),
-                gender=user.get('gender', 'N/A'),
-                address=user.get('address', 'N/A'),
-                serial=user.get('serial_number', 'N/A'),
-                registered=user.get('registered_at', 'N/A')
-            )
+            # Fetch patient reports and metrics from S3
+            serial = user.get('serial_number', '')
+            phone = user.get('phone', '')
             
-            self.user_details_text.setHtml(html)
+            # Get all reports for this patient
+            patient_reports = self.get_patient_reports(serial, phone)
+            
+            # Get latest ECG metrics from most recent report
+            latest_metrics = self.get_latest_patient_metrics(serial, phone)
+            
+            # Build enhanced HTML with patient info, metrics, and reports
+            html_parts = []
+            html_parts.append("<div style='font-family:Arial; padding:12px; background:#f9f9f9; border-radius:8px;'>")
+            
+            # Patient Header
+            html_parts.append("""
+                <div style='background:linear-gradient(135deg, #ff6600 0%, #ff8533 100%); 
+                            padding:16px; border-radius:8px; margin-bottom:16px;'>
+                    <b style='color:white; font-size:18px;'>👤 {full_name}</b>
+                    <div style='color:#ffe0cc; font-size:12px; margin-top:4px;'>Patient ID: {serial}</div>
+                </div>
+            """.format(full_name=user.get('full_name', 'N/A'), serial=user.get('serial_number', 'N/A')))
+            
+            # Basic Info Card
+            html_parts.append("<div style='background:white; padding:12px; border-radius:8px; margin-bottom:12px; border:1px solid #e0e0e0;'>")
+            html_parts.append("<b style='color:#ff6600; font-size:14px;'>📋 Basic Information</b>")
+            html_parts.append("<table style='width:100%; font-size:13px; margin-top:8px;'>")
+            info_items = [
+                ("Username", user.get('username', 'N/A')),
+                ("Phone", user.get('phone', 'N/A')),
+                ("Age", user.get('age', 'N/A')),
+                ("Gender", user.get('gender', 'N/A')),
+                ("Address", user.get('address', 'N/A')),
+                ("Registered", user.get('registered_at', 'N/A'))
+            ]
+            for i, (label, value) in enumerate(info_items):
+                bg = '#fff5e6' if i % 2 == 0 else 'white'
+                html_parts.append(f"<tr style='background:{bg};'><td style='padding:6px; font-weight:bold; width:40%;'>{label}:</td><td style='padding:6px;'>{value}</td></tr>")
+            html_parts.append("</table></div>")
+            
+            # ECG Metrics Card (if available)
+            if latest_metrics:
+                html_parts.append("<div style='background:white; padding:12px; border-radius:8px; margin-bottom:12px; border:1px solid #e0e0e0;'>")
+                html_parts.append("<b style='color:#ff6600; font-size:14px;'>💓 Latest ECG Metrics</b>")
+                html_parts.append("<div style='color:#666; font-size:11px; margin-top:2px;'>From most recent report</div>")
+                
+                # Display key metrics in a grid
+                html_parts.append("<div style='display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px;'>")
+                
+                metric_items = [
+                    ("Heart Rate", latest_metrics.get('Heart_Rate', '--'), "bpm", "#e74c3c"),
+                    ("PR Interval", latest_metrics.get('PR_Interval', '--'), "ms", "#3498db"),
+                    ("QRS Duration", latest_metrics.get('QRS_Duration', '--'), "ms", "#2ecc71"),
+                    ("QRS Axis", latest_metrics.get('QRS_Axis', '--'), "°", "#9b59b6"),
+                    ("ST Segment", latest_metrics.get('ST_Segment', '--'), "mV", "#f39c12"),
+                    ("QTc Interval", latest_metrics.get('QTc_Interval', '--'), "ms", "#1abc9c"),
+                    ("Rhythm", latest_metrics.get('Rhythm_Interpretation', '--'), "", "#e67e22"),
+                    ("Report Date", latest_metrics.get('report_date', '--'), "", "#95a5a6")
+                ]
+                
+                for label, value, unit, color in metric_items:
+                    html_parts.append(f"""
+                        <div style='background:linear-gradient(135deg, {color}15 0%, {color}05 100%); 
+                                    padding:10px; border-radius:6px; border-left:3px solid {color};'>
+                            <div style='font-size:11px; color:#666; font-weight:bold;'>{label}</div>
+                            <div style='font-size:16px; font-weight:bold; color:{color}; margin-top:4px;'>{value} {unit}</div>
+                        </div>
+                    """)
+                
+                html_parts.append("</div></div>")
+            else:
+                html_parts.append("<div style='background:#fff3cd; padding:12px; border-radius:8px; margin-bottom:12px; border:1px solid #ffc107;'>")
+                html_parts.append("<b style='color:#ff6600;'>⚠️ No ECG metrics found</b><br>")
+                html_parts.append("<span style='font-size:12px; color:#666;'>This patient hasn't generated any reports yet.</span>")
+                html_parts.append("</div>")
+            
+            # Patient Reports List
+            html_parts.append("<div style='background:white; padding:12px; border-radius:8px; border:1px solid #e0e0e0;'>")
+            html_parts.append(f"<b style='color:#ff6600; font-size:14px;'>📊 Patient Reports ({len(patient_reports)})</b>")
+            
+            if patient_reports:
+                html_parts.append("<div style='margin-top:12px; max-height:250px; overflow-y:auto;'>")
+                for i, report in enumerate(patient_reports[:10]):  # Show latest 10
+                    bg = '#f8f9fa' if i % 2 == 0 else 'white'
+                    report_name = os.path.basename(report.get('key', 'Unknown'))
+                    report_date = report.get('last_modified', 'Unknown')
+                    report_size = self._format_size(report.get('size', 0))
+                    
+                    html_parts.append(f"""
+                        <div style='background:{bg}; padding:10px; border-radius:6px; margin-bottom:6px; border:1px solid #e0e0e0;'>
+                            <div style='font-weight:bold; color:#333; font-size:13px;'>📄 {report_name}</div>
+                            <div style='font-size:11px; color:#666; margin-top:4px;'>
+                                📅 {report_date} &nbsp;&nbsp; 💾 {report_size}
+                            </div>
+                        </div>
+                    """)
+                
+                if len(patient_reports) > 10:
+                    html_parts.append(f"<div style='text-align:center; color:#666; font-size:12px; margin-top:8px;'>... and {len(patient_reports) - 10} more reports</div>")
+                
+                html_parts.append("</div>")
+            else:
+                html_parts.append("<div style='text-align:center; padding:20px; color:#999;'>No reports found for this patient</div>")
+            
+            html_parts.append("</div>")
+            html_parts.append("</div>")
+            
+            self.user_details_text.setHtml("".join(html_parts))
             
         except Exception as e:
-            self.user_details_text.setPlainText(f"Error loading details: {e}")
+            import traceback
+            self.user_details_text.setPlainText(f"Error loading details: {e}\n\n{traceback.format_exc()}")
+    
+    def get_patient_reports(self, serial, phone):
+        """Get all reports for a specific patient from cached reports"""
+        try:
+            all_reports = getattr(self, '_cached_reports', [])
+            patient_reports = []
+            
+            # Filter reports by serial number or phone (check in filename or metadata)
+            for report in all_reports:
+                key = report.get('key', '')
+                # Check if serial or phone appears in the key/filename
+                if serial and serial in key:
+                    patient_reports.append(report)
+                elif phone and phone in key:
+                    patient_reports.append(report)
+            
+            # Sort by date (newest first)
+            patient_reports.sort(key=lambda x: x.get('last_modified', ''), reverse=True)
+            return patient_reports
+            
+        except Exception as e:
+            print(f"Error getting patient reports: {e}")
+            return []
+    
+    def get_latest_patient_metrics(self, serial, phone):
+        """Get latest ECG metrics for a patient from their most recent report JSON"""
+        try:
+            # Get patient's reports
+            reports = self.get_patient_reports(serial, phone)
+            
+            if not reports:
+                return None
+            
+            # Get the most recent report
+            latest_report = reports[0]
+            report_key = latest_report.get('key', '')
+            
+            # Look for corresponding JSON file
+            if report_key.endswith('.pdf'):
+                json_key = report_key.replace('.pdf', '.json')
+            else:
+                json_key = report_key + '.json'
+            
+            # Download and parse JSON metrics
+            try:
+                import requests
+                url_res = self.cloud_uploader.generate_presigned_url(json_key)
+                if url_res.get('status') == 'success':
+                    r = requests.get(url_res['url'], timeout=5)
+                    if r.status_code == 200:
+                        metrics = r.json()
+                        metrics['report_date'] = latest_report.get('last_modified', 'Unknown')
+                        return metrics
+            except Exception as json_err:
+                print(f"Could not load JSON metrics: {json_err}")
+                return None
+            
+            return None
+            
+        except Exception as e:
+            print(f"Error getting patient metrics: {e}")
+            return None
     
     def link_user_to_reports(self):
         """Switch to Reports tab and filter by selected user's serial number or phone"""
