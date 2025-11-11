@@ -722,15 +722,6 @@ class Dashboard(QWidget):
         """)
         
         issue_layout.addWidget(self.conclusion_box)
-        # Small footer box below the conclusion (~3 cm height)
-        self.conclusion_footer = QFrame()
-        self.conclusion_footer.setStyleSheet("background: #f7f7f7; border: none; border-radius: 10px;")
-        self.conclusion_footer.setFixedHeight(115)
-        self.conclusion_footer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        _footer_layout = QHBoxLayout(self.conclusion_footer)
-        _footer_layout.setContentsMargins(10, 8, 10, 8)
-        _footer_layout.addWidget(QLabel(""))
-        issue_layout.addWidget(self.conclusion_footer)
         
         grid.addWidget(issue_card, 2, 1, 1, 1)
 
