@@ -409,20 +409,20 @@ def get_dashboard_conclusions_from_image(dashboard_instance):
                 conclusions_data = json.load(f)
             
             print(f"📄 Loaded JSON data: {conclusions_data}")
-            
+                    
             # Extract findings from JSON
             findings = conclusions_data.get('findings', [])
             
             if findings:
                 conclusions = findings[:8]  # Take up to 8 conclusions
                 print(f"✅ Loaded {len(conclusions)} DYNAMIC conclusions from JSON file")
-                for i, conclusion in enumerate(conclusions, 1):
-                    print(f"   {i}. {conclusion}")
+            for i, conclusion in enumerate(conclusions, 1):
+                print(f"   {i}. {conclusion}")
             else:
                 print("⚠️ No findings in JSON file")
         else:
             print(f"❌ Conclusions JSON file not found: {conclusions_file}")
-    
+                
     except Exception as json_err:
         print(f"❌ Error loading conclusions from JSON: {json_err}")
         import traceback
@@ -1102,21 +1102,21 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
     master_drawing.add(pr_label)
 
     qrs_label = String(130, 630, f"QRS : {QRS} ms", 
-                      fontSize=10, fontName="Helvetica", fillColor=colors.black)
-    master_drawing.add(qrs_label)
-    
-    rr_label = String(130, 612, f"RR    : {RR} ms", 
                      fontSize=10, fontName="Helvetica", fillColor=colors.black)
+    master_drawing.add(qrs_label)
+
+    rr_label = String(130, 612, f"RR    : {RR} ms", 
+                      fontSize=10, fontName="Helvetica", fillColor=colors.black)
     master_drawing.add(rr_label)
 
     qt_label = String(130, 594, f"QT    : {QT} ms", 
-                     fontSize=10, fontName="Helvetica", fillColor=colors.black)
+                      fontSize=10, fontName="Helvetica", fillColor=colors.black)
     master_drawing.add(qt_label)
 
     qtc_label = String(130, 576, f"QTc  : {QTc} ms", 
-                      fontSize=10, fontName="Helvetica", fillColor=colors.black)
+                     fontSize=10, fontName="Helvetica", fillColor=colors.black)
     master_drawing.add(qtc_label)
-
+    
     # SECOND COLUMN (Right side - x=240)
     # ST segment is voltage (mV), not time (ms)
     st_label = String(240, 594, f"ST            : {ST} mV", 
@@ -1270,7 +1270,7 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
     
     # SECOND COLUMN - P/QRS/T AXES (in degrees, medical standard)
     p_qrs_t_axis_label = String(240, 670, f"P/QRS/T  : {p_axis_str}°/{qrs_axis_str}°/{t_axis_str}°", 
-                                 fontSize=10, fontName="Helvetica", fillColor=colors.black)
+                         fontSize=10, fontName="Helvetica", fillColor=colors.black)
     master_drawing.add(p_qrs_t_axis_label)
 
     # Get RV5 and SV1 amplitudes
@@ -1343,7 +1343,7 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
     
     # SECOND COLUMN - Sokolow-Lyon Index (SV1 + RV5 in millivolts)
     sokolow_label = String(240, 630, f"SV1+RV5  : {sokolow_lyon_mv:.2f} mV", 
-                           fontSize=10, fontName="Helvetica", fillColor=colors.black)
+                        fontSize=10, fontName="Helvetica", fillColor=colors.black)
     master_drawing.add(sokolow_label)
 
     # QTCF removed - not a standard ECG parameter

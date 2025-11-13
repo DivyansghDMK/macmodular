@@ -1557,9 +1557,15 @@ class ECGTestPage(QWidget):
         # Use Lead II (index 1) for primary analysis
         lead_ii_data = self.data[1]
         
-        print(f"🔍 ECG Metrics: Lead II data length: {len(lead_ii_data)}")
-        if len(lead_ii_data) > 0:
-            print(f"🔍 ECG Metrics: Lead II data range: {np.min(lead_ii_data):.2f} to {np.max(lead_ii_data):.2f}")
+        # Throttled debug output - only print occasionally
+        if not hasattr(self, '_ecg_metrics_debug_count'):
+            self._ecg_metrics_debug_count = 0
+        self._ecg_metrics_debug_count += 1
+        
+        if self._ecg_metrics_debug_count % 50 == 0:  # Print every 50th call
+            print(f"🔍 ECG Metrics: Lead II data length: {len(lead_ii_data)}")
+            if len(lead_ii_data) > 0:
+                print(f"🔍 ECG Metrics: Lead II data range: {np.min(lead_ii_data):.2f} to {np.max(lead_ii_data):.2f}")
         
         # Check if data is all zeros or has no real signal variation
         if len(lead_ii_data) < 100 or np.all(lead_ii_data == 0) or np.std(lead_ii_data) < 0.1:
@@ -1655,15 +1661,74 @@ class ECGTestPage(QWidget):
                 if signal_std == 0:
                     print("❌ No signal variation detected")
                     return 60
+                
+                # SMART ADAPTIVE PEAK DETECTION (40-300 BPM with BPM-based selection)
+                # Run multiple detections and choose based on CALCULATED BPM
                 height_threshold = signal_mean + 0.5 * signal_std
-                prominence_threshold = signal_std * 0.3
-                min_distance = max(1, int(0.4 * fs))
-                peaks, properties = find_peaks(
+                prominence_threshold = signal_std * 0.4
+                
+                # Run 3 detection strategies
+                detection_results = []
+                
+                # Strategy 1: Conservative (best for 40-120 BPM)
+                peaks_conservative, _ = find_peaks(
                     filtered_signal,
                     height=height_threshold,
-                    distance=min_distance,
+                    distance=int(0.5 * fs),  # 400ms - wider distance for low BPM
                     prominence=prominence_threshold
                 )
+                if len(peaks_conservative) >= 2:
+                    rr_cons = np.diff(peaks_conservative) * (1000 / fs)
+                    valid_cons = rr_cons[(rr_cons >= 200) & (rr_cons <= 2000)]
+                    if len(valid_cons) > 0:
+                        bpm_cons = 60000 / np.median(valid_cons)
+                        std_cons = np.std(valid_cons)
+                        detection_results.append(('conservative', peaks_conservative, bpm_cons, std_cons))
+                
+                # Strategy 2: Normal (best for 100-180 BPM)
+                peaks_normal, _ = find_peaks(
+                    filtered_signal,
+                    height=height_threshold,
+                    distance=int(0.3 * fs),  # 240ms - medium distance
+                    prominence=prominence_threshold
+                )
+                if len(peaks_normal) >= 2:
+                    rr_norm = np.diff(peaks_normal) * (1000 / fs)
+                    valid_norm = rr_norm[(rr_norm >= 200) & (rr_norm <= 2000)]
+                    if len(valid_norm) > 0:
+                        bpm_norm = 60000 / np.median(valid_norm)
+                        std_norm = np.std(valid_norm)
+                        detection_results.append(('normal', peaks_normal, bpm_norm, std_norm))
+                
+                # Strategy 3: Tight (best for 160-300 BPM)
+                peaks_tight, _ = find_peaks(
+                    filtered_signal,
+                    height=height_threshold,
+                    distance=int(0.2 * fs),  # 160ms - tight distance for high BPM
+                    prominence=prominence_threshold
+                )
+                if len(peaks_tight) >= 2:
+                    rr_tight = np.diff(peaks_tight) * (1000 / fs)
+                    valid_tight = rr_tight[(rr_tight >= 200) & (rr_tight <= 2000)]
+                    if len(valid_tight) > 0:
+                        bpm_tight = 60000 / np.median(valid_tight)
+                        std_tight = np.std(valid_tight)
+                        detection_results.append(('tight', peaks_tight, bpm_tight, std_tight))
+                
+                # Select based on BPM consistency (lowest std deviation = most stable)
+                if detection_results:
+                    # Sort by consistency (lower std = better)
+                    detection_results.sort(key=lambda x: x[3])  # Sort by std
+                    best_method, peaks, best_bpm, best_std = detection_results[0]
+                    # print(f"🎯 Selected {best_method}: {best_bpm:.1f} BPM (std={best_std:.1f})")
+                else:
+                    # Fallback
+                    peaks, _ = find_peaks(
+                        filtered_signal,
+                        height=height_threshold,
+                        distance=int(0.4 * fs),
+                        prominence=prominence_threshold
+                    )
             except Exception as e:
                 print(f"❌ Error in peak detection: {e}")
                 return 60
@@ -1682,9 +1747,10 @@ class ECGTestPage(QWidget):
                 print(f"❌ Error calculating R-R intervals: {e}")
                 return 60
 
-            # Filter physiologically reasonable intervals (300-2000 ms)
+            # Filter physiologically reasonable intervals (200-2000 ms)
+            # 200 ms = 300 BPM (max), 2000 ms = 30 BPM (min)
             try:
-                valid_intervals = rr_intervals_ms[(rr_intervals_ms >= 300) & (rr_intervals_ms <= 2000)]
+                valid_intervals = rr_intervals_ms[(rr_intervals_ms >= 200) & (rr_intervals_ms <= 2000)]
                 if len(valid_intervals) == 0:
                     print("❌ No valid R-R intervals found")
                     return 60
@@ -1699,19 +1765,37 @@ class ECGTestPage(QWidget):
                     print("❌ Invalid median R-R interval")
                     return 60
                 heart_rate = 60000 / median_rr
-                heart_rate = max(40, min(200, heart_rate))
+                heart_rate = max(40, min(300, heart_rate))  # Extended: 40-300 BPM range
                 if np.isnan(heart_rate) or np.isinf(heart_rate):
                     print("❌ Invalid heart rate calculated")
                     return 60
-                # Stability: only update if changed by >= 1 bpm; otherwise hold previous
+                
+                # ANTI-FLICKERING: Smooth BPM over last few readings
                 hr_int = int(round(heart_rate))
+                
+                # Initialize smoothing buffer
+                if not hasattr(self, '_bpm_smooth_buffer'):
+                    self._bpm_smooth_buffer = []
+                
+                # Add current reading to buffer
+                self._bpm_smooth_buffer.append(hr_int)
+                
+                # Keep only last 5 readings for smoothing
+                if len(self._bpm_smooth_buffer) > 5:
+                    self._bpm_smooth_buffer.pop(0)
+                
+                # Return median of last 5 readings (very stable, no flickering)
+                smoothed_bpm = int(np.median(self._bpm_smooth_buffer))
+                
+                # Only update if changed by >= 2 bpm (prevents minor fluctuations)
                 try:
-                    if self._last_hr_display is not None and abs(hr_int - self._last_hr_display) < 1:
+                    if self._last_hr_display is not None and abs(smoothed_bpm - self._last_hr_display) < 2:
                         return self._last_hr_display
-                    self._last_hr_display = hr_int
+                    self._last_hr_display = smoothed_bpm
                 except Exception:
-                    pass
-                return hr_int
+                    self._last_hr_display = smoothed_bpm
+                
+                return smoothed_bpm
             except Exception as e:
                 print(f"❌ Error in final heart rate calculation: {e}")
                 return 60
@@ -1757,7 +1841,7 @@ class ECGTestPage(QWidget):
             squared = np.square(np.diff(filtered_data))
             integrated = np.convolve(squared, np.ones(int(0.15 * fs)) / (0.15 * fs), mode='same')
             threshold = np.mean(integrated) + 0.5 * np.std(integrated)
-            r_peaks, _ = find_peaks(integrated, height=threshold, distance=int(0.6 * fs))
+            r_peaks, _ = find_peaks(integrated, height=threshold, distance=int(0.15 * fs))  # Reduced from 0.6 to 0.15 for high BPM (360 max)
             
             if len(r_peaks) < 2:
                 return amplitudes
@@ -1820,7 +1904,7 @@ class ECGTestPage(QWidget):
                     squared_v5 = np.square(np.diff(filtered_v5))
                     integrated_v5 = np.convolve(squared_v5, np.ones(int(0.15 * fs)) / (0.15 * fs), mode='same')
                     threshold_v5 = np.mean(integrated_v5) + 0.5 * np.std(integrated_v5)
-                    r_peaks_v5, _ = find_peaks(integrated_v5, height=threshold_v5, distance=int(0.6 * fs))
+                    r_peaks_v5, _ = find_peaks(integrated_v5, height=threshold_v5, distance=int(0.15 * fs))  # Reduced for high BPM (360 max)
                     
                     # Measure R-wave amplitude in V5
                     rv5_amps = []
@@ -1849,7 +1933,7 @@ class ECGTestPage(QWidget):
                     squared_v1 = np.square(np.diff(filtered_v1))
                     integrated_v1 = np.convolve(squared_v1, np.ones(int(0.15 * fs)) / (0.15 * fs), mode='same')
                     threshold_v1 = np.mean(integrated_v1) + 0.5 * np.std(integrated_v1)
-                    r_peaks_v1, _ = find_peaks(integrated_v1, height=threshold_v1, distance=int(0.6 * fs))
+                    r_peaks_v1, _ = find_peaks(integrated_v1, height=threshold_v1, distance=int(0.15 * fs))  # Reduced for high BPM (360 max)
                     
                     # Measure S-wave amplitude in V1 (negative deflection after R)
                     sv1_amps = []
@@ -2293,7 +2377,12 @@ class ECGTestPage(QWidget):
             else:
                 metrics['sampling_rate'] = "--"
             
-            print(f"🔍 get_current_metrics returning: {metrics}")
+            # Reduced debug output - only print every 100 calls to avoid console spam
+            if not hasattr(self, '_metrics_call_count'):
+                self._metrics_call_count = 0
+            self._metrics_call_count += 1
+            if self._metrics_call_count % 100 == 0:
+                print(f"🔍 get_current_metrics returning: {metrics}")
             return metrics
         except Exception as e:
             print(f"Error getting current metrics: {e}")
@@ -5838,8 +5927,8 @@ class ECGTestPage(QWidget):
                     except Exception as e:
                         print(f"❌ Error updating plot {i}: {e}")
                         continue
-                # Calculate ECG metrics every 2 updates to make it more responsive
-                if self.update_count % 2 == 0:
+                # Calculate ECG metrics every 5 updates for good responsiveness
+                if self.update_count % 5 == 0:
                     try:
                         self.calculate_ecg_metrics()
                     except Exception as e:

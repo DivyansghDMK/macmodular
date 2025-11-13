@@ -1402,7 +1402,7 @@ class Dashboard(QWidget):
         return False
 
     def calculate_live_ecg_metrics(self, ecg_signal, sampling_rate=500):
-        """Calculate live ECG metrics from Lead 2 data - Use EXACT same method as ECG test page"""
+        """Calculate live ECG metrics from Lead 2 data - ADAPTIVE for 40-300 BPM"""
         try:
             from scipy.signal import butter, filtfilt, find_peaks
             
@@ -1410,40 +1410,112 @@ class Dashboard(QWidget):
             if len(ecg_signal) < 200:
                 return {}
             
-            # Apply bandpass filter to enhance R-peaks (0.5-40 Hz) - SAME AS ECG TEST PAGE
-            fs = sampling_rate  # Use same sampling rate as ECG test page
+            # Apply bandpass filter to enhance R-peaks (0.5-40 Hz)
+            fs = sampling_rate
             nyquist = fs / 2
             low = 0.5 / nyquist
             high = 40 / nyquist
             b, a = butter(4, [low, high], btype='band')
             filtered_signal = filtfilt(b, a, ecg_signal)
             
-            # Find R-peaks using scipy - SAME AS ECG TEST PAGE
-            peaks, properties = find_peaks(
+            # SMART ADAPTIVE PEAK DETECTION (40-300 BPM with BPM-based selection)
+            # Run multiple detections and choose based on CALCULATED BPM consistency
+            height_threshold = np.mean(filtered_signal) + 0.5 * np.std(filtered_signal)
+            prominence_threshold = np.std(filtered_signal) * 0.4
+            
+            # Run 3 detection strategies
+            detection_results = []
+            
+            # Strategy 1: Conservative (best for 40-120 BPM)
+            peaks_conservative, _ = find_peaks(
                 filtered_signal,
-                height=np.mean(filtered_signal) + 0.5 * np.std(filtered_signal),
-                distance=int(0.4 * fs),  # Minimum 0.4 seconds between peaks (150 BPM max)
-                prominence=np.std(filtered_signal) * 0.3
+                height=height_threshold,
+                distance=int(0.5 * fs),  # 400ms - wider distance for low BPM
+                prominence=prominence_threshold
             )
+            if len(peaks_conservative) >= 2:
+                rr_cons = np.diff(peaks_conservative) * (1000 / fs)
+                valid_cons = rr_cons[(rr_cons >= 200) & (rr_cons <= 2000)]
+                if len(valid_cons) > 0:
+                    bpm_cons = 60000 / np.median(valid_cons)
+                    std_cons = np.std(valid_cons)
+                    detection_results.append(('conservative', peaks_conservative, bpm_cons, std_cons))
+            
+            # Strategy 2: Normal (best for 100-180 BPM)
+            peaks_normal, _ = find_peaks(
+                filtered_signal,
+                height=height_threshold,
+                distance=int(0.3 * fs),  # 240ms - medium distance
+                prominence=prominence_threshold
+            )
+            if len(peaks_normal) >= 2:
+                rr_norm = np.diff(peaks_normal) * (1000 / fs)
+                valid_norm = rr_norm[(rr_norm >= 200) & (rr_norm <= 2000)]
+                if len(valid_norm) > 0:
+                    bpm_norm = 60000 / np.median(valid_norm)
+                    std_norm = np.std(valid_norm)
+                    detection_results.append(('normal', peaks_normal, bpm_norm, std_norm))
+            
+            # Strategy 3: Tight (best for 160-300 BPM)
+            peaks_tight, _ = find_peaks(
+                filtered_signal,
+                height=height_threshold,
+                distance=int(0.2 * fs),  # 160ms - tight distance for high BPM
+                prominence=prominence_threshold
+            )
+            if len(peaks_tight) >= 2:
+                rr_tight = np.diff(peaks_tight) * (1000 / fs)
+                valid_tight = rr_tight[(rr_tight >= 200) & (rr_tight <= 2000)]
+                if len(valid_tight) > 0:
+                    bpm_tight = 60000 / np.median(valid_tight)
+                    std_tight = np.std(valid_tight)
+                    detection_results.append(('tight', peaks_tight, bpm_tight, std_tight))
+            
+            # Select based on BPM consistency (lowest std deviation = most stable)
+            if detection_results:
+                # Sort by consistency (lower std = better)
+                detection_results.sort(key=lambda x: x[3])  # Sort by std
+                best_method, peaks, best_bpm, best_std = detection_results[0]
+            else:
+                # Fallback
+                peaks, _ = find_peaks(
+                    filtered_signal,
+                    height=height_threshold,
+                    distance=int(0.4 * fs),
+                    prominence=prominence_threshold
+                )
             
             metrics = {}
             
-            # Calculate Heart Rate - EXACT SAME METHOD AS ECG TEST PAGE
+            # Calculate Heart Rate with anti-flickering
             if len(peaks) >= 2:
                 # Calculate R-R intervals in milliseconds
                 rr_intervals_ms = np.diff(peaks) * (1000 / fs)
                 
-                # Filter physiologically reasonable intervals (300-2000 ms)
-                valid_intervals = rr_intervals_ms[(rr_intervals_ms >= 300) & (rr_intervals_ms <= 2000)]
+                # Filter physiologically reasonable intervals (200-2000 ms)
+                # 200 ms = 300 BPM, 2000 ms = 30 BPM
+                valid_intervals = rr_intervals_ms[(rr_intervals_ms >= 200) & (rr_intervals_ms <= 2000)]
                 
                 if len(valid_intervals) > 0:
-                    # Calculate heart rate from median R-R interval - SAME AS ECG TEST PAGE
+                    # Calculate heart rate from median R-R interval
                     median_rr = np.median(valid_intervals)
                     heart_rate = 60000 / median_rr  # Convert to BPM
                     
-                    # Ensure reasonable range (40-200 BPM) - SAME AS ECG TEST PAGE
-                    heart_rate = max(40, min(200, heart_rate))
-                    metrics['heart_rate'] = int(round(heart_rate))
+                    # Ensure reasonable range (40-300 BPM)
+                    heart_rate = max(40, min(300, heart_rate))
+                    hr_int = int(round(heart_rate))
+                    
+                    # ANTI-FLICKERING: Smooth over last 5 readings
+                    if not hasattr(self, '_dashboard_bpm_buffer'):
+                        self._dashboard_bpm_buffer = []
+                    
+                    self._dashboard_bpm_buffer.append(hr_int)
+                    if len(self._dashboard_bpm_buffer) > 5:
+                        self._dashboard_bpm_buffer.pop(0)
+                    
+                    # Use median for stability
+                    smoothed_bpm = int(np.median(self._dashboard_bpm_buffer))
+                    metrics['heart_rate'] = smoothed_bpm
             
             # Calculate QRS Axis - LIVE like ECG test page
             if hasattr(self, 'ecg_test_page') and self.ecg_test_page and hasattr(self.ecg_test_page, 'data') and len(self.ecg_test_page.data) >= 6:
@@ -1735,7 +1807,7 @@ class Dashboard(QWidget):
                                 self._debug_counter += 1
                             else:
                                 self._debug_counter = 1
-                            if self._debug_counter % 10 == 0:  # Print every 10 updates for more frequent debugging
+                            if self._debug_counter % 50 == 0:  # Optimized: Print every 50 updates (was 10) - reduces console spam
                                 print(f"🔍 Dashboard ECG metrics: {ecg_metrics}")
                             self.update_dashboard_metrics_from_ecg()
                         
@@ -2556,15 +2628,15 @@ class Dashboard(QWidget):
             peaks, _ = find_peaks(
                 ecg_signal,
                 height=np.mean(ecg_signal) + 0.5 * np.std(ecg_signal),
-                distance=int(0.4 * sampling_rate)
+                distance=int(0.15 * sampling_rate)  # Reduced from 0.4 to 0.15 for high BPM (up to 360)
             )
             
             if len(peaks) >= 3:
                 # Calculate R-R intervals in milliseconds
                 rr_intervals = np.diff(peaks) * (1000 / sampling_rate)
                 
-                # Filter valid intervals (300-2000 ms)
-                valid_rr = rr_intervals[(rr_intervals >= 300) & (rr_intervals <= 2000)]
+                # Filter valid intervals (240-2000 ms) - 240ms = 250 BPM
+                valid_rr = rr_intervals[(rr_intervals >= 240) & (rr_intervals <= 2000)]
                 
                 if len(valid_rr) >= 2:
                     # HRV: Standard deviation of R-R intervals (SDNN)

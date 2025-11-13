@@ -31,7 +31,7 @@ NOTCH_FREQUENCY = 50.0  # Hz
 
 # Heart Rate Calculation
 MIN_HEART_RATE = 30  # BPM
-MAX_HEART_RATE = 360  # BPM (increased to detect ventricular tachycardia and extreme rates)
+MAX_HEART_RATE = 200  # BPM
 DEFAULT_HEART_RATE = 72  # BPM
 
 # ECG Metrics Ranges

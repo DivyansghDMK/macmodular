@@ -153,10 +153,49 @@ class CloudUploader:
         
         return False
     
+    def _is_file_already_uploaded(self, file_path):
+        """
+        Check if a file has already been uploaded based on filename
+        
+        Args:
+            file_path (str): Path to the file to check
+            
+        Returns:
+            bool: True if file has already been uploaded, False otherwise
+        """
+        try:
+            filename = os.path.basename(file_path)
+            
+            # Check upload log
+            if os.path.exists(self.upload_log_path):
+                with open(self.upload_log_path, 'r') as f:
+                    log_data = json.load(f)
+                
+                # Check if this filename has been uploaded before
+                for entry in log_data:
+                    # Get filename from the logged path
+                    logged_filename = os.path.basename(entry.get('local_path', ''))
+                    
+                    # Also check metadata filename as backup
+                    metadata_filename = entry.get('metadata', {}).get('filename', '')
+                    
+                    # If filename matches and upload was successful
+                    if (logged_filename == filename or metadata_filename == filename):
+                        if entry.get('result', {}).get('status') == 'success':
+                            return True
+            
+            return False
+            
+        except Exception as e:
+            print(f"⚠️ Error checking upload history: {e}")
+            # If we can't check, assume not uploaded (safer to upload twice than not at all)
+            return False
+    
     def upload_report(self, file_path, metadata=None):
         """
         Upload ONLY reports, metrics, and report files to AWS S3
         Does NOT upload: session logs, debug data, crash logs, temp files
+        Prevents duplicate uploads - files are only uploaded once
         
         Args:
             file_path (str): Path to the report file (PDF, JSON, etc.)
@@ -172,6 +211,15 @@ class CloudUploader:
             return {"status": "error", "message": f"Cloud service '{self.cloud_service}' is not properly configured"}
         
         try:
+            # Check if file has already been uploaded
+            filename = os.path.basename(file_path)
+            if self._is_file_already_uploaded(file_path):
+                return {
+                    "status": "already_uploaded",
+                    "message": f"File '{filename}' has already been uploaded to cloud - skipping duplicate upload",
+                    "filename": filename
+                }
+            
             # Check if this is a report file (PDF or JSON report)
             file_ext = Path(file_path).suffix.lower()
             file_basename = os.path.basename(file_path).lower()
@@ -236,6 +284,7 @@ class CloudUploader:
     def upload_user_signup(self, user_data):
         """
         Upload user signup details to cloud storage
+        Prevents duplicate uploads - checks if user has already been uploaded
         
         Args:
             user_data (dict): Dictionary containing user signup information
@@ -261,10 +310,34 @@ class CloudUploader:
             print(f"❌ {msg}")
             return {"status": "error", "message": msg}
         
+        # Check if this user has already been uploaded
+        username = user_data.get('username', 'unknown')
+        serial_number = user_data.get('serial_number', '')
+        
+        try:
+            if os.path.exists(self.upload_log_path):
+                with open(self.upload_log_path, 'r') as f:
+                    log_data = json.load(f)
+                
+                # Check if user with same username or serial has been uploaded
+                for entry in log_data:
+                    metadata = entry.get('metadata', {})
+                    if metadata.get('type') == 'user_signup':
+                        if (metadata.get('username') == username or 
+                            (serial_number and metadata.get('serial_number') == serial_number)):
+                            if entry.get('result', {}).get('status') == 'success':
+                                print(f"ℹ️ User signup for '{username}' already uploaded - skipping duplicate")
+                                return {
+                                    "status": "already_uploaded",
+                                    "message": f"User signup for '{username}' has already been uploaded",
+                                    "username": username
+                                }
+        except Exception as e:
+            print(f"⚠️ Error checking user signup history: {e}")
+        
         try:
             # Create a JSON file with user signup details
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            username = user_data.get('username', 'unknown')
             filename = f"user_signup_{username}_{timestamp}.json"
             
             # Create temp directory if it doesn't exist
@@ -288,6 +361,7 @@ class CloudUploader:
             metadata = {
                 'type': 'user_signup',
                 'username': username,
+                'serial_number': serial_number,
                 'uploaded_at': datetime.now().isoformat()
             }
             
@@ -668,6 +742,70 @@ class CloudUploader:
             return []
         except Exception:
             return []
+    
+    def get_uploaded_files_list(self):
+        """
+        Get a list of all uploaded filenames for easy checking
+        
+        Returns:
+            list: List of successfully uploaded filenames
+        """
+        try:
+            if os.path.exists(self.upload_log_path):
+                with open(self.upload_log_path, 'r') as f:
+                    log_data = json.load(f)
+                
+                uploaded_files = []
+                for entry in log_data:
+                    if entry.get('result', {}).get('status') == 'success':
+                        filename = entry.get('metadata', {}).get('filename', '')
+                        if not filename:
+                            filename = os.path.basename(entry.get('local_path', ''))
+                        if filename:
+                            uploaded_files.append(filename)
+                
+                return uploaded_files
+            return []
+        except Exception as e:
+            print(f"⚠️ Error getting uploaded files list: {e}")
+            return []
+    
+    def clear_upload_log(self):
+        """
+        Clear the upload log (use with caution!)
+        This will allow re-uploading of all files
+        
+        Returns:
+            dict: Result with status
+        """
+        try:
+            if os.path.exists(self.upload_log_path):
+                # Backup the log before clearing
+                backup_path = f"{self.upload_log_path}.backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                os.makedirs(os.path.dirname(backup_path), exist_ok=True)
+                
+                # Copy to backup
+                import shutil
+                shutil.copy2(self.upload_log_path, backup_path)
+                
+                # Clear the log
+                with open(self.upload_log_path, 'w') as f:
+                    json.dump([], f)
+                
+                return {
+                    "status": "success",
+                    "message": f"Upload log cleared. Backup saved to {backup_path}"
+                }
+            else:
+                return {
+                    "status": "success",
+                    "message": "Upload log does not exist - nothing to clear"
+                }
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Failed to clear upload log: {str(e)}"
+            }
 
 
 # Global instance

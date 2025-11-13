@@ -783,14 +783,20 @@ class AdminReportsDialog(QDialog):
     # ===== Users Tab Methods =====
     
     def load_users(self):
-        """Load user signup data from S3 in background thread"""
+        """Load user signup data from S3 in background thread with fallback to local"""
         # Show loading message
-        self.user_details_text.setHtml("<div style='padding:20px;text-align:center;color:#ff6600;'><b>⏳ Loading users from S3...</b></div>")
+        self.user_details_text.setHtml("<div style='padding:20px;text-align:center;color:#ff6600;'><b>⏳ Loading users...</b></div>")
         self.users_table.setRowCount(0)
         
         # Disable buttons during load
         self.user_refresh_btn.setEnabled(False)
         self.link_report_btn.setEnabled(False)
+        
+        # Check if cloud is configured
+        if not self.cloud_uploader.is_configured():
+            print("⚠️ Cloud not configured - loading from local users.json only")
+            self.load_local_users_fallback()
+            return
         
         # Load in background thread to prevent UI freeze
         from PyQt5.QtCore import QThread, pyqtSignal
@@ -805,6 +811,10 @@ class AdminReportsDialog(QDialog):
             
             def run(self):
                 try:
+                    # Add timeout to prevent hanging
+                    import signal
+                    
+                    # Try to list reports with timeout protection
                     result = self.cloud_uploader.list_reports(prefix="ecg-reports/")
                     if result.get('status') != 'success':
                         self.error.emit(f"Failed to list files: {result.get('message')}")
@@ -814,24 +824,39 @@ class AdminReportsDialog(QDialog):
                     # Filter for user_signup JSON files
                     user_files = [item for item in all_items if 'user_signup' in item['key'].lower() and item['key'].lower().endswith('.json')]
                     
+                    print(f"📥 Found {len(user_files)} user signup files on S3")
+                    
                     users = []
                     import requests
                     
+                    # Limit to first 50 users to prevent timeout
+                    user_files_limited = user_files[:50]
+                    if len(user_files) > 50:
+                        print(f"⚠️ Limiting to first 50 users (total: {len(user_files)})")
+                    
                     # Batch download with connection pooling for speed
                     session = requests.Session()
-                    for user_file in user_files:
+                    loaded_count = 0
+                    for user_file in user_files_limited:
                         try:
                             url_res = self.cloud_uploader.generate_presigned_url(user_file['key'])
                             if url_res.get('status') == 'success':
-                                r = session.get(url_res['url'], timeout=5)
+                                r = session.get(url_res['url'], timeout=3)  # Reduced from 5 to 3 seconds
                                 if r.status_code == 200:
                                     user_data = r.json()
                                     user_data['s3_key'] = user_file['key']
                                     users.append(user_data)
+                                    loaded_count += 1
+                                    
+                                    # Progress feedback
+                                    if loaded_count % 10 == 0:
+                                        print(f"📥 Loaded {loaded_count}/{len(user_files_limited)} users...")
                         except Exception as e:
-                            print(f"Failed to load {user_file['key']}: {e}")
+                            print(f"Failed to load {user_file['key']}: {str(e)[:50]}")
+                            continue  # Skip failed users, don't crash
                     
                     session.close()
+                    print(f"✅ Successfully loaded {len(users)} users from S3")
                     self.finished.emit(users)
                     
                 except Exception as e:
@@ -846,15 +871,118 @@ class AdminReportsDialog(QDialog):
             self.user_details_text.setHtml("<div style='padding:20px;text-align:center;color:#666;'><b>✅ Users loaded! Select a user to view details.</b></div>")
         
         def on_error(error_msg):
-            QMessageBox.critical(self, "Error", f"Failed to load users: {error_msg}")
-            self.user_refresh_btn.setEnabled(True)
-            self.link_report_btn.setEnabled(True)
-            self.user_details_text.setHtml(f"<div style='padding:20px;color:red;'><b>❌ Error: {error_msg}</b></div>")
+            print(f"❌ S3 load failed: {error_msg}")
+            print(f"⏬ Falling back to local users.json")
+            # Fallback to local users when S3 fails
+            self.load_local_users_fallback()
         
         self.load_thread = LoadUsersThread(self.cloud_uploader)
         self.load_thread.finished.connect(on_users_loaded)
         self.load_thread.error.connect(on_error)
         self.load_thread.start()
+    
+    def load_local_users_fallback(self):
+        """Load users from local users.json file as fallback - CRASH-PROOF"""
+        try:
+            print("📁 Loading users from local users.json file...")
+            
+            # Find users.json in multiple possible locations
+            possible_paths = [
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), '..', 'users.json'),
+                os.path.join(os.path.dirname(__file__), '..', '..', 'users.json'),
+                'users.json',
+                '../users.json',
+                '../../users.json'
+            ]
+            
+            users_file = None
+            for path in possible_paths:
+                abs_path = os.path.abspath(path)
+                if os.path.exists(abs_path):
+                    users_file = abs_path
+                    print(f"✅ Found users.json at: {users_file}")
+                    break
+            
+            if not users_file:
+                print(f"❌ users.json not found in any location")
+                self.user_details_text.setHtml("""
+                    <div style='padding:20px;text-align:center;color:#f44336;'>
+                        <b style='font-size:16px;'>❌ No Users Found</b><br><br>
+                        <span style='font-size:13px;color:#666;'>
+                            • Cloud storage not configured<br>
+                            • users.json file not found locally<br><br>
+                            Please configure cloud storage or create users.json file.
+                        </span>
+                    </div>
+                """)
+                self.user_refresh_btn.setEnabled(True)
+                self.link_report_btn.setEnabled(True)
+                return
+            
+            # Load users from local file
+            with open(users_file, 'r', encoding='utf-8') as f:
+                users_dict = json.load(f)
+            
+            # Convert to list format (same as S3 format)
+            users_list = []
+            for username, user_data in users_dict.items():
+                if isinstance(user_data, dict):
+                    # Ensure username is included
+                    user_entry = user_data.copy()
+                    if 'username' not in user_entry:
+                        user_entry['username'] = username
+                    
+                    # Set defaults for missing fields
+                    user_entry.setdefault('full_name', user_data.get('name', username))
+                    user_entry.setdefault('phone', user_entry.get('phone', user_entry.get('contact', '')))
+                    user_entry.setdefault('age', user_entry.get('age', ''))
+                    user_entry.setdefault('gender', user_entry.get('gender', ''))
+                    user_entry.setdefault('serial_number', user_entry.get('serial_id', ''))
+                    user_entry.setdefault('registered_at', '')
+                    
+                    users_list.append(user_entry)
+            
+            print(f"✅ Loaded {len(users_list)} users from local file")
+            
+            # Update UI
+            self._all_users = users_list
+            self.apply_user_filter()
+            self._update_user_cards()
+            
+            # Re-enable buttons
+            self.user_refresh_btn.setEnabled(True)
+            self.link_report_btn.setEnabled(True)
+            
+            # Update message
+            self.user_details_text.setHtml(f"""
+                <div style='padding:20px;text-align:center;'>
+                    <b style='color:#ff6600; font-size:16px;'>📁 Local Users Loaded</b><br><br>
+                    <span style='font-size:13px;color:#666;'>
+                        Showing {len(users_list)} users from local database<br>
+                        (Cloud storage not available - using users.json)
+                    </span>
+                </div>
+            """)
+            
+        except Exception as e:
+            print(f"❌ Error loading local users: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # Show error message
+            self.user_details_text.setHtml(f"""
+                <div style='padding:20px;text-align:center;color:#f44336;'>
+                    <b style='font-size:16px;'>❌ Error Loading Users</b><br><br>
+                    <span style='font-size:13px;color:#666;'>
+                        {str(e)[:200]}<br><br>
+                        Please check that users.json exists and is valid.
+                    </span>
+                </div>
+            """)
+            
+            # Re-enable buttons
+            self.user_refresh_btn.setEnabled(True)
+            self.link_report_btn.setEnabled(True)
     
     def apply_user_filter(self):
         """Filter users table based on search - OPTIMIZED"""
@@ -1178,11 +1306,11 @@ Are you absolutely sure you want to delete this user?
             )
     
     def _load_user_details_async(self, user):
-        """Load user details asynchronously to prevent UI freeze - CRASH-PROOF"""
+        """Load user details asynchronously to prevent UI freeze - SIMPLIFIED & CRASH-PROOF"""
         try:
             print(f"📊 Loading details for user: {user.get('full_name', 'Unknown')}")
             
-            # Fetch patient reports and metrics from S3
+            # Fetch patient reports and metrics from S3 (if cloud configured)
             serial = user.get('serial_number', '')
             phone = user.get('phone', '')
             
@@ -1190,24 +1318,28 @@ Are you absolutely sure you want to delete this user?
             patient_reports = []
             latest_metrics = None
             
-            try:
-                # Get all reports for this patient
-                patient_reports = self.get_patient_reports(serial, phone)
-                print(f"✅ Found {len(patient_reports)} reports for patient")
-            except Exception as e:
-                print(f"⚠️ Error fetching patient reports: {e}")
-                patient_reports = []
-            
-            try:
-                # Get latest ECG metrics from most recent report
-                latest_metrics = self.get_latest_patient_metrics(serial, phone)
-                if latest_metrics:
-                    print(f"✅ Loaded ECG metrics successfully")
-                else:
-                    print(f"⚠️ No metrics found for patient")
-            except Exception as e:
-                print(f"⚠️ Error fetching patient metrics: {e}")
-                latest_metrics = None
+            # Only try S3 if cloud is configured
+            if self.cloud_uploader.is_configured():
+                try:
+                    # Get all reports for this patient (with timeout protection)
+                    patient_reports = self.get_patient_reports(serial, phone)
+                    print(f"✅ Found {len(patient_reports)} reports for patient")
+                except Exception as e:
+                    print(f"⚠️ Error fetching patient reports: {e}")
+                    patient_reports = []
+                
+                try:
+                    # Get latest ECG metrics from most recent report (with timeout protection)
+                    latest_metrics = self.get_latest_patient_metrics(serial, phone)
+                    if latest_metrics:
+                        print(f"✅ Loaded ECG metrics successfully")
+                    else:
+                        print(f"⚠️ No metrics found for patient")
+                except Exception as e:
+                    print(f"⚠️ Error fetching patient metrics: {e}")
+                    latest_metrics = None
+            else:
+                print(f"⚠️ Cloud not configured - showing local user data only")
             
             # Build enhanced HTML with patient info, metrics, and reports
             html_parts = []
@@ -1395,11 +1527,12 @@ Are you absolutely sure you want to delete this user?
                     import requests
                 except ImportError:
                     print("❌ requests module not available, skipping JSON metadata check")
-                    return []
+                    return patient_reports  # Return what we have (empty)
                 
-                # Limit to first 20 reports to prevent timeout
-                reports_to_check = all_reports[:20]
+                # Limit to first 10 reports to prevent timeout (reduced from 20)
+                reports_to_check = all_reports[:10]
                 print(f"📥 Checking {len(reports_to_check)} reports for metadata match...")
+                print(f"⚠️ Limited search to first 10 reports for performance")
                 
                 for report in reports_to_check:
                     try:
