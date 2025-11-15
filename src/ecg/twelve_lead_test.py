@@ -4705,6 +4705,25 @@ class ECGTestPage(QWidget):
                     dst_path = os.path.join(reports_dir, dst_basename)
                     counter += 1
                 shutil.copyfile(filename, dst_path)
+            
+            # Also save to Downloads folder
+            try:
+                import pathlib
+                downloads_path = pathlib.Path.home() / "Downloads"
+                if downloads_path.exists():
+                    # Use the original filename basename (before any counter modifications)
+                    original_basename = os.path.basename(filename)
+                    downloads_report_path = downloads_path / original_basename
+                    # Handle duplicates in Downloads folder
+                    counter = 1
+                    name, ext = os.path.splitext(original_basename)
+                    while downloads_report_path.exists():
+                        downloads_report_path = downloads_path / f"{name}_{counter}{ext}"
+                        counter += 1
+                    shutil.copyfile(filename, str(downloads_report_path))
+                    print(f"✅ Report also saved to Downloads: {downloads_report_path}")
+            except Exception as e:
+                print(f"⚠️ Could not save to Downloads folder: {e}")
             index_path = os.path.join(reports_dir, 'index.json')
             items = []
             if os.path.exists(index_path):

@@ -2,7 +2,7 @@
 ECG Monitor Application - Main Entry Point
 A comprehensive ECG monitoring application with real-time analysis and visualization.
 """
-
+    
 import sys
 import os
 import json
@@ -371,7 +371,7 @@ class LoginRegisterDialog(QDialog):
         class NavBlog(QWidget):
             def __init__(self): super().__init__(); self.setWindowTitle("Blog")
         class NavPricing(QWidget):
-            def __init__(self): super().__init__(); self.setWindowTitle("Pricing")
+            def __init__(self): super().__init__(); self.setWindowTitle("Pricing")                                      
         nav_links = [
             ("Home", NavHome),
             ("About us", NavAbout),

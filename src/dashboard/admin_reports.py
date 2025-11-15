@@ -1327,19 +1327,22 @@ Are you absolutely sure you want to delete this user?
                 except Exception as e:
                     print(f"⚠️ Error fetching patient reports: {e}")
                     patient_reports = []
-                
-                try:
-                    # Get latest ECG metrics from most recent report (with timeout protection)
-                    latest_metrics = self.get_latest_patient_metrics(serial, phone)
-                    if latest_metrics:
-                        print(f"✅ Loaded ECG metrics successfully")
-                    else:
-                        print(f"⚠️ No metrics found for patient")
-                except Exception as e:
-                    print(f"⚠️ Error fetching patient metrics: {e}")
-                    latest_metrics = None
-            else:
+            
+            try:
+                # Get latest ECG metrics from most recent report (with timeout protection)
+                latest_metrics = self.get_latest_patient_metrics(serial, phone)
+                if latest_metrics:
+                    print(f"✅ Loaded ECG metrics successfully")
+                else:
+                    print(f"⚠️ No metrics found for patient")
+            except Exception as e:
+                print(f"⚠️ Error fetching patient metrics: {e}")
+                latest_metrics = None
+            
+            if not self.cloud_uploader.is_configured():
                 print(f"⚠️ Cloud not configured - showing local user data only")
+                patient_reports = []
+                latest_metrics = None
             
             # Build enhanced HTML with patient info, metrics, and reports
             html_parts = []
