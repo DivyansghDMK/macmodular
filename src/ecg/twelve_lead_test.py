@@ -2409,8 +2409,8 @@ class ECGTestPage(QWidget):
             data_mean = (p1 + p99) / 2.0
             data_std = np.std(valid_data[(valid_data >= p1) & (valid_data <= p99)])
             
-            # Get current gain setting to respect user's gain control
-            current_gain = self.settings_manager.get_wave_gain() / 10.0
+            # Get current gain setting to respect user's gain control (REVERSED)
+            current_gain = 5.0 / self.settings_manager.get_wave_gain()  # Reversed: 2.5mm → 2.0x, 20mm → 0.25x
             
             # Calculate appropriate Y-range with some padding
             if data_std > 0:
@@ -2494,9 +2494,9 @@ class ECGTestPage(QWidget):
         self.buffer_size = int(base_buffer * speed_factor)
         
         # Update y-axis limits based on gain
-        # Higher gain = larger amplitude display
+        # REVERSED: Lower gain value = larger amplitude display (2.5mm behaves like 20mm, 20mm behaves like 2.5mm)
         base_ylim = 400
-        gain_factor = wave_gain / 10.0  # 10mm/mV is baseline
+        gain_factor = 5.0 / wave_gain  # Reversed: 2.5mm → 2.0x, 20mm → 0.25x
         self.ylim = int(base_ylim * gain_factor)
 
         # Force immediate redraw of all plots with new settings
@@ -3614,7 +3614,7 @@ class ECGTestPage(QWidget):
                     if len(data) > 0:
                         # Detect signal source and apply adaptive scaling
                         signal_source = self.detect_signal_source(data)
-                        gain_factor = self.settings_manager.get_wave_gain() / 10.0
+                        gain_factor = 5.0 / self.settings_manager.get_wave_gain()  # Reversed: 2.5mm → 2.0x, 20mm → 0.25x
                         device_data = np.array(data)
                         centered = self.apply_adaptive_gain(device_data, signal_source, gain_factor)
                         
@@ -3757,8 +3757,8 @@ class ECGTestPage(QWidget):
             data_mean = (p1 + p99) / 2.0
             data_std = np.std(valid_data[(valid_data >= p1) & (valid_data <= p99)])
             
-            # Get current gain setting to respect user's gain control
-            current_gain = self.settings_manager.get_wave_gain() / 10.0
+            # Get current gain setting to respect user's gain control (REVERSED)
+            current_gain = 5.0 / self.settings_manager.get_wave_gain()  # Reversed: 2.5mm → 2.0x, 20mm → 0.25x
             
             # Calculate appropriate Y-range with adaptive padding based on signal source
             # INCREASED padding to prevent cropping in all modes
@@ -3807,7 +3807,7 @@ class ECGTestPage(QWidget):
                 signal_source = self.detect_signal_source(data_array)
                 
                 # Apply current settings to the incoming data
-                gain_factor = self.settings_manager.get_wave_gain() / 10.0
+                gain_factor = 5.0 / self.settings_manager.get_wave_gain()  # Reversed: 2.5mm → 2.0x, 20mm → 0.25x
                 
                 # Apply adaptive gain based on signal source
                 centered = self.apply_adaptive_gain(data_array, signal_source, gain_factor)
@@ -4461,7 +4461,7 @@ class ECGTestPage(QWidget):
                     # Convert device data to ECG range and center around zero
                     device_data = np.array(data)
                     # Scale to typical ECG range (subtract baseline ~2100 and scale)
-                    gain_factor = self.settings_manager.get_wave_gain() / 10.0
+                    gain_factor = 5.0 / self.settings_manager.get_wave_gain()  # Reversed: 2.5mm → 2.0x, 20mm → 0.25x
                     centered = (device_data - 2100) * gain_factor
                     
                     # Apply noise reduction filtering
@@ -5110,7 +5110,7 @@ class ECGTestPage(QWidget):
                     centered = np.array(data[-n:]) - np.mean(data[-n:])
                     
                     # Apply current gain setting
-                    gain_factor = self.settings_manager.get_wave_gain() / 10.0
+                    gain_factor = 5.0 / self.settings_manager.get_wave_gain()  # Reversed: 2.5mm → 2.0x, 20mm → 0.25x
                     centered = centered * gain_factor
                     
                     if n < self.buffer_size:
@@ -5726,7 +5726,7 @@ class ECGTestPage(QWidget):
                     centered = np.array(data[-n:]) - np.mean(data[-n:])
                     
                     # Apply current gain setting
-                    gain_factor = self.settings_manager.get_wave_gain() / 10.0
+                    gain_factor = 5.0 / self.settings_manager.get_wave_gain()  # Reversed: 2.5mm → 2.0x, 20mm → 0.25x
                     centered = centered * gain_factor
                     
                     if n < self.buffer_size:
@@ -5813,7 +5813,7 @@ class ECGTestPage(QWidget):
                             raw = np.asarray(self.data[i])
                             gain = 1.0
                             try:
-                                gain = float(self.settings_manager.get_wave_gain()) / 10.0
+                                gain = 5.0 / float(self.settings_manager.get_wave_gain())  # Reversed: 2.5mm → 2.0x, 20mm → 0.25x
                             except Exception:
                                 pass
                             raw = (raw - np.nanmean(raw)) * gain
@@ -5908,7 +5908,7 @@ class ECGTestPage(QWidget):
                             continue
                         has_data = (i < len(self.data) and len(self.data[i]) > 0)
                         if has_data:
-                            gain_factor = self.settings_manager.get_wave_gain() / 10.0
+                            gain_factor = 5.0 / self.settings_manager.get_wave_gain()  # Reversed: 2.5mm → 2.0x, 20mm → 0.25x
                             scaled_data = self.apply_adaptive_gain(self.data[i], signal_source, gain_factor)
 
                             # Build time axis and apply wave-speed scaling

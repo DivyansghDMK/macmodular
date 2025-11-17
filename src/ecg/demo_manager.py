@@ -567,10 +567,11 @@ class DemoManager:
         
         print(f"🎛️ update_demo_plots: time_window={time_window}, num_samples_to_show={num_samples_to_show}")
         
-        # Get current gain
+        # Get current gain (REVERSED: 2.5mm → 2.0x, 20mm → 0.25x)
         try:
-            current_gain = float(self.ecg_test_page.settings_manager.get_wave_gain()) / 10.0
-            print(f"🎛️ Demo gain: {current_gain:.2f} (from settings: {self.ecg_test_page.settings_manager.get_wave_gain()})")
+            wave_gain = float(self.ecg_test_page.settings_manager.get_wave_gain())
+            current_gain = 5.0 / wave_gain  # Reversed: 2.5mm → 2.0x, 20mm → 0.25x
+            print(f"🎛️ Demo gain: {current_gain:.2f} (from settings: {wave_gain}mm/mV, reversed)")
         except Exception:
             current_gain = 1.0
             print(f"🎛️ Demo gain: {current_gain:.2f} (fallback)")
