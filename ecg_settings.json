@@ -1,6 +1,6 @@
 {
-  "wave_speed": "25",
-  "wave_gain": "2.5",
+  "wave_speed": "12.5",
+  "wave_gain": "20",
   "lead_sequence": "Standard",
   "sampling_mode": "Simultaneous",
   "demo_function": "Off",

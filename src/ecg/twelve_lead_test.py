@@ -2430,9 +2430,20 @@ class ECGTestPage(QWidget):
             p99 = np.percentile(valid_data, 99)
             data_mean = (p1 + p99) / 2.0
             data_std = np.std(valid_data[(valid_data >= p1) & (valid_data <= p99)])
+            # Maximum deviation of any point from the mean – we will always cover this
+            peak_deviation = np.max(np.abs(valid_data - data_mean))
             
-            # Get current gain setting to respect user's gain control (REVERSED)
-            current_gain = 5.0 / self.settings_manager.get_wave_gain()  # Reversed: 2.5mm → 2.0x, 20mm → 0.25x
+            # Get current gain setting.
+            # IMPORTANT:
+            # - Previously we scaled padding directly with (5.0 / wave_gain).
+            # - At 10 mm/mV this *reduced* the vertical range too much and R‑peaks
+            #   started getting cropped at the top of the small lead boxes.
+            # - To keep waves fully inside the boxes for **all** gains (2.5, 5, 10, 20),
+            #   we never allow the effective gain factor to shrink the Y‑range below
+            #   the base padding that comes from the signal statistics.
+            raw_gain = 5.0 / self.settings_manager.get_wave_gain()  # 2.5mm → 2.0, 5mm → 1.0, 10mm → 0.5, 20mm → 0.25
+            # Do not let gain make the Y‑range *smaller* than base_padding.
+            current_gain = max(1.0, raw_gain)
             
             # Calculate appropriate Y-range with some padding
             if data_std > 0:
@@ -2514,10 +2525,14 @@ class ECGTestPage(QWidget):
         speed_factor = wave_speed / 50.0  # 50mm/s is baseline
         self.buffer_size = int(base_buffer * speed_factor)
         
-        # Update y-axis limits based on gain
-        # REVERSED: Lower gain value = larger amplitude display (2.5mm behaves like 20mm, 20mm behaves like 2.5mm)
+        # Update y-axis limits based on gain.
+        # We keep a **minimum** vertical range so that for higher gains
+        # (e.g. 10 mm/mV, 20 mm/mV) the waves are NOT cropped at the top
+        # of the mini-boxes. Gain is allowed to *increase* headroom but
+        # never shrink it below the base range.
         base_ylim = 400
-        gain_factor = 5.0 / wave_gain  # Reversed: 2.5mm → 2.0x, 20mm → 0.25x
+        raw_gain = 5.0 / wave_gain  # 2.5mm → 2.0, 5mm → 1.0, 10mm → 0.5, 20mm → 0.25
+        gain_factor = max(1.0, raw_gain)
         self.ylim = int(base_ylim * gain_factor)
 
         # Force immediate redraw of all plots with new settings
@@ -3791,17 +3806,25 @@ class ECGTestPage(QWidget):
                 # Moderate padding – was very large before, which made peaks look tiny.
                 base_padding = max(data_std * 2.5, 80)
                 padding = base_padding * current_gain
-                print(f"📊 Human body Y-range: base_padding={base_padding:.1f}, gain={current_gain:.1f}, final_padding={padding:.1f}")
+                print(f"📊 Human body Y-range: base_padding={base_padding:.1f}, gain={current_gain:.1f}, pre_clip_padding={padding:.1f}")
             elif signal_source == "weak_body":
                 # Slightly more padding for very weak signals
                 base_padding = max(data_std * 2.0, 60)
                 padding = base_padding * current_gain
-                print(f"📊 Weak body Y-range: base_padding={base_padding:.1f}, gain={current_gain:.1f}, final_padding={padding:.1f}")
+                print(f"📊 Weak body Y-range: base_padding={base_padding:.1f}, gain={current_gain:.1f}, pre_clip_padding={padding:.1f}")
             else:
                 # Hardware / unknown – keep more room but less than before so peaks are taller.
                 base_padding = max(data_std * 3.0, 250)
                 padding = base_padding * current_gain
-                print(f"📊 Hardware Y-range: base_padding={base_padding:.1f}, gain={current_gain:.1f}, final_padding={padding:.1f}")
+                print(f"📊 Hardware Y-range: base_padding={base_padding:.1f}, gain={current_gain:.1f}, pre_clip_padding={padding:.1f}")
+
+            # FINAL SAFETY: always cover the tallest peak with 10% headroom,
+            # so waves never touch or cross the plot border (no cropping),
+            # regardless of gain/speed combinations.
+            if peak_deviation > 0:
+                min_padding = peak_deviation * 1.1
+                if padding < min_padding:
+                    padding = min_padding
             
             if data_std > 0:
                 y_min = data_mean - padding
