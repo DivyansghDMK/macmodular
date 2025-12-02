@@ -6,7 +6,7 @@
   "demo_function": "Off",
   "storage": "SD",
   "serial_port": "/dev/cu.usbserial-140",
-  "baud_rate": "115200",
+"baud_rate": "115200",
   "printer_analysis_result": "on",
   "printer_average_wave": "on",
   "printer_rhythm_lead": "off",

@@ -631,6 +631,7 @@ class DemoManager:
         if now_ts < self._warmup_until:
             warmup_left = max(0.0, self._warmup_until - now_ts)
             warmup_total = max(1e-6, self._warmup_until - (self._demo_started_at or now_ts))
+            # Ramp from 0.8 to 1.0 linearly across warmup (minimal ramp for faster display)
             progress = 1.0 - (warmup_left / warmup_total)
             ramp = max(0.8, min(1.0, 0.8 + 0.2 * progress))
             effective_gain = current_gain * ramp

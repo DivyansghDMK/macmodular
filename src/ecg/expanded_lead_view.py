@@ -8,7 +8,7 @@ import numpy as np
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame, QGridLayout,
     QSizePolicy, QScrollArea, QGroupBox, QFormLayout, QLineEdit, QComboBox,
-    QMessageBox, QApplication, QDialog, QGraphicsDropShadowEffect
+    QMessageBox, QApplication, QDialog, QGraphicsDropShadowEffect, QSlider
 )
 from PyQt5.QtGui import QFont, QColor, QPalette, QPixmap, QPainter, QPen
 from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QRect
@@ -317,6 +317,142 @@ class ArrhythmiaDetector:
             
         return arrhythmias if arrhythmias else ["Unspecified Irregular Rhythm"]
     
+    def detect_arrhythmias_with_probabilities(self, signal, r_peaks, window_size=2.0):
+        """
+        Detect arrhythmias with probability scores over time windows
+        Returns a dictionary with time windows and probability scores for each arrhythmia type
+        """
+        if len(r_peaks) < 3:
+            return {}
+        
+        # Calculate RR intervals
+        rr_intervals = np.diff(r_peaks) / self.fs * 1000  # in ms
+        time_points = r_peaks[:-1] / self.fs  # Time points for each RR interval
+        
+        # Initialize heat map data structure
+        arrhythmia_types = [
+            "Normal Sinus Rhythm",
+            "Atrial Fibrillation",
+            "Ventricular Tachycardia",
+            "Premature Ventricular Contractions",
+            "Sinus Bradycardia",
+            "Sinus Tachycardia",
+            "Irregular Rhythm"
+        ]
+        
+        heat_map_data = {arr_type: [] for arr_type in arrhythmia_types}
+        
+        # Analyze in sliding windows
+        window_samples = int(window_size * self.fs)
+        num_windows = max(1, len(signal) // window_samples)
+        
+        for i in range(num_windows):
+            start_idx = i * window_samples
+            end_idx = min((i + 1) * window_samples, len(signal))
+            window_signal = signal[start_idx:end_idx]
+            window_time = (start_idx + end_idx) / (2 * self.fs)
+            
+            # Find R peaks in this window
+            window_r_peaks = [r for r in r_peaks if start_idx <= r < end_idx]
+            
+            if len(window_r_peaks) < 2:
+                # Insufficient data - assign low probabilities
+                for arr_type in arrhythmia_types:
+                    heat_map_data[arr_type].append((window_time, 0.0))
+                continue
+            
+            window_rr = np.diff(window_r_peaks) / self.fs * 1000
+            
+            # Calculate probabilities for each arrhythmia type
+            prob_nsr = self._prob_normal_sinus_rhythm(window_rr)
+            prob_afib = self._prob_atrial_fibrillation(window_signal, window_r_peaks)
+            prob_vt = self._prob_ventricular_tachycardia(window_rr)
+            prob_pvc = self._prob_premature_ventricular_contractions(window_signal, window_r_peaks)
+            prob_brady = self._prob_bradycardia(window_rr)
+            prob_tachy = self._prob_tachycardia(window_rr)
+            
+            # Normalize probabilities so they sum to 1.0
+            probs = [prob_nsr, prob_afib, prob_vt, prob_pvc, prob_brady, prob_tachy]
+            total = sum(probs)
+            if total > 0:
+                probs = [p / total for p in probs]
+            else:
+                probs = [1.0/len(probs)] * len(probs)  # Equal probability if all zero
+            
+            # Store probabilities
+            heat_map_data["Normal Sinus Rhythm"].append((window_time, probs[0]))
+            heat_map_data["Atrial Fibrillation"].append((window_time, probs[1]))
+            heat_map_data["Ventricular Tachycardia"].append((window_time, probs[2]))
+            heat_map_data["Premature Ventricular Contractions"].append((window_time, probs[3]))
+            heat_map_data["Sinus Bradycardia"].append((window_time, probs[4]))
+            heat_map_data["Sinus Tachycardia"].append((window_time, probs[5]))
+            heat_map_data["Irregular Rhythm"].append((window_time, 1.0 - prob_nsr))
+        
+        return heat_map_data
+    
+    def _prob_normal_sinus_rhythm(self, rr_intervals):
+        """Calculate probability of normal sinus rhythm"""
+        if len(rr_intervals) < 3:
+            return 0.0
+        mean_hr = 60000 / np.mean(rr_intervals)
+        std_rr = np.std(rr_intervals)
+        if 60 <= mean_hr <= 100 and std_rr < 120:
+            return 0.9
+        elif 50 <= mean_hr <= 110 and std_rr < 150:
+            return 0.5
+        return 0.1
+    
+    def _prob_atrial_fibrillation(self, signal, r_peaks):
+        """Calculate probability of atrial fibrillation"""
+        if len(r_peaks) < 10:
+            return 0.0
+        rr_intervals = np.diff(r_peaks)
+        cv = np.std(rr_intervals) / np.mean(rr_intervals) if np.mean(rr_intervals) > 0 else 0
+        if cv > 0.15:
+            return min(0.95, 0.5 + (cv - 0.15) * 2.0)
+        return max(0.0, 0.5 - cv * 2.0)
+    
+    def _prob_ventricular_tachycardia(self, rr_intervals):
+        """Calculate probability of ventricular tachycardia"""
+        if len(rr_intervals) < 3:
+            return 0.0
+        mean_hr = 60000 / np.mean(rr_intervals)
+        std_rr = np.std(rr_intervals)
+        if mean_hr > 120 and std_rr < 40:
+            return min(0.95, 0.7 + (mean_hr - 120) / 200)
+        return 0.1
+    
+    def _prob_premature_ventricular_contractions(self, signal, r_peaks):
+        """Calculate probability of PVCs"""
+        if len(r_peaks) < 5:
+            return 0.0
+        rr_intervals = np.diff(r_peaks) / self.fs
+        mean_rr = np.mean(rr_intervals)
+        pvc_count = 0
+        for i in range(len(rr_intervals)):
+            if rr_intervals[i] < 0.8 * mean_rr:
+                if i + 1 < len(rr_intervals) and rr_intervals[i+1] > 1.2 * mean_rr:
+                    pvc_count += 1
+        return min(0.95, pvc_count / len(rr_intervals) * 2.0)
+    
+    def _prob_bradycardia(self, rr_intervals):
+        """Calculate probability of bradycardia"""
+        if len(rr_intervals) < 3:
+            return 0.0
+        mean_hr = 60000 / np.mean(rr_intervals)
+        if mean_hr < 60:
+            return min(0.95, 0.5 + (60 - mean_hr) / 60)
+        return 0.1
+    
+    def _prob_tachycardia(self, rr_intervals):
+        """Calculate probability of tachycardia"""
+        if len(rr_intervals) < 3:
+            return 0.0
+        mean_hr = 60000 / np.mean(rr_intervals)
+        if mean_hr > 100:
+            return min(0.95, 0.5 + (mean_hr - 100) / 200)
+        return 0.1
+    
     def _is_normal_sinus_rhythm(self, rr_intervals):
         """Check if rhythm is normal sinus rhythm"""
         if len(rr_intervals) < 3: return False
@@ -387,159 +523,13 @@ class ExpandedLeadView(QDialog):
 
         # Store the baseline (mean) of the signal for proper zooming
         self.signal_baseline = 0.0
-        
-        # Demo mode settings - sync with parent's demo manager
+# Demo mode settings - sync with parent's demo manager
         self.demo_mode_active = False
         self.demo_manager = None
         if parent and hasattr(parent, 'demo_manager') and hasattr(parent, 'demo_toggle'):
             self.demo_mode_active = parent.demo_toggle.isChecked()
             self.demo_manager = parent.demo_manager
             print(f"🎬 Expanded view: Demo mode is {'ON' if self.demo_mode_active else 'OFF'}")
-        
-        # Live data update
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.update_live_data)
-        self.is_live = False
-        
-        self.setWindowTitle(f"Detailed Analysis - {lead_name}")
-        self.setMinimumSize(1100, 700)
-        self.resize(1400, 900)
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #f0f2f5;
-            }
-            QScrollArea {
-                border: none;
-            }
-        """)
-        
-        self.setup_ui()
-        self.analyze_ecg()
-        
-        # Start live updates if parent is available (hardware data)
-        if parent is not None:
-            self.start_live_mode()
-
-            # Initialize button states based on parent acquisition status
-            if hasattr(self, 'expanded_start_btn'):
-                self.update_button_states()
-    
-    def setup_ui(self):
-        """Setup the user interface"""
-        main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(10)
-        main_layout.setContentsMargins(10, 10, 10, 10)
-        
-        # Header
-        self.create_header(main_layout)
-        
-        # Main content area with proper proportions
-        content_layout = QHBoxLayout()
-        content_layout.setSpacing(10)
-        
-        # Left side - ECG plot (70% of width)
-        self.create_ecg_plot(content_layout)
-        
-        # Right side - Metrics (30% of width)
-        self.create_metrics_panel(content_layout)
-        
-        main_layout.addLayout(content_layout, 1)
-        
-        # Bottom - Arrhythmia analysis
-        self.create_arrhythmia_panel(main_layout)
-    
-    def create_header(self, parent_layout):
-        """Create the header section"""
-        header_frame = QFrame()
-        header_frame.setFixedHeight(60)
-        header_frame.setStyleSheet("""
-            QFrame {
-                background: white;
-                border-radius: 8px;
-                padding: 10px;
-                border: 1px solid #e0e0e0;
-            }
-        """)
-        header_layout = QHBoxLayout(header_frame)
-        header_layout.setContentsMargins(15, 0, 5, 0)
-        
-        title_label = QLabel(f"Lead {self.lead_name} - Detailed Waveform Analysis")
-        title_label.setFont(QFont("Segoe UI", 16, QFont.Bold))
-        title_label.setStyleSheet("color: #2c3e50; border: none; background: transparent;")
-        title_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        title_label.setWordWrap(True)
-        header_layout.addWidget(title_label)
-        header_layout.addStretch()
-        
-        close_btn = QPushButton("Close")
-        close_btn.setMinimumHeight(35)
-        close_btn.setStyleSheet("""
-            QPushButton {
-                background: #34495e; color: white; border-radius: 5px;
-                padding: 8px 18px; font-weight: bold; font-size: 10pt;
-            }
-            QPushButton:hover { background: #5d6d7e; }
-        """)
-        close_btn.clicked.connect(self.close)
-        header_layout.addWidget(close_btn)
-        
-        parent_layout.addWidget(header_frame)
-
-    # Mouse wheel event for amplification
-
-    def wheelEvent(self, event):
-        """Handle mouse wheel scrolling for amplification"""
-        try:
-            # Get scroll direction
-            delta = event.angleDelta().y()
-            
-            # Calculate amplification change
-            if delta > 0:
-                # Scroll up = amplify (zoom in)
-                self.amplification *= 1.1
-            else:
-                # Scroll down = deamplify (zoom out)
-                self.amplification /= 1.1
-            
-            # Clamp amplification to limits
-            self.amplification = max(self.min_amplification, 
-                                    min(self.max_amplification, self.amplification))
-            
-            # Update the plot
-            self.update_plot()
-            
-            # Update amplification display if it exists
-            if hasattr(self, 'amp_label'):
-                self.amp_label.setText(f"{self.amplification:.2f}x")
-            
-            event.accept()
-        except Exception as e:
-            print(f"Error in wheel event: {e}")
-    
-    def create_ecg_plot(self, parent_layout):
-        """Create the ECG plot area"""
-        plot_frame = QFrame()
-        plot_frame.setStyleSheet("""
-            QFrame {
-                background: white;
-                border-radius: 8px;
-                border: 1px solid #e0e0e0;
-            }
-        """)
-        plot_layout = QVBoxLayout(plot_frame)
-        plot_layout.setContentsMargins(8, 8, 8, 8)
-        
-        # Create matplotlib figure with better sizing
-        # Use a moderate DPI, but allow canvas to expand with layout
-        self.fig = Figure(figsize=(10, 6), facecolor='white', dpi=110)
-        self.ax = self.fig.add_subplot(111)
-        self.fig.tight_layout(pad=2.0)
-        
-        self.setup_ecg_plot()
-        
-        self.canvas = FigureCanvas(self.fig)
-        self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.canvas.setMinimumSize(700, 420)
         plot_layout.addWidget(self.canvas)
 
         # --- AMPLIFICATION CONTROLS ---
@@ -657,7 +647,7 @@ class ExpandedLeadView(QDialog):
         startstop_layout = QHBoxLayout()
         startstop_layout.addStretch()
         
-        # Start Button for Expanded Lead View
+# Start Button for Expanded Lead View
         self.expanded_start_btn = QPushButton("Start")
         self.expanded_start_btn.setMinimumSize(100, 40)
         self.expanded_start_btn.setStyleSheet("""
@@ -679,7 +669,7 @@ class ExpandedLeadView(QDialog):
             QPushButton:disabled {
                 background: #6c757d;
                 border: 2px solid #6c757d;
-            }
+}
         """)
         self.expanded_start_btn.clicked.connect(self.start_parent_acquisition)
         startstop_layout.addWidget(self.expanded_start_btn)
@@ -713,6 +703,55 @@ class ExpandedLeadView(QDialog):
         
         plot_layout.addLayout(startstop_layout)
         
+# History slider container (initially hidden until acquisition stops)
+        history_frame = QFrame()
+        history_frame.setStyleSheet("""
+            QFrame {
+                background: transparent;
+                border: none;
+            }
+        """)
+        history_layout = QHBoxLayout(history_frame)
+        history_layout.setContentsMargins(0, 5, 0, 5)
+        history_layout.setSpacing(10)
+
+        history_label = QLabel("History View:")
+        history_label.setStyleSheet("color: #2c3e50; font-weight: bold; font-size: 11pt;")
+        history_layout.addWidget(history_label)
+
+        slider = QSlider(Qt.Horizontal)
+        slider.setRange(0, 0)
+        slider.setSingleStep(10)
+        slider.setPageStep(100)
+        slider.setTickPosition(QSlider.TicksBelow)
+        slider.setStyleSheet("""
+            QSlider::groove:horizontal {
+                border: 1px solid #bbb;
+                background: #f5f5f5;
+                height: 6px;
+                border-radius: 4px;
+            }
+            QSlider::handle:horizontal {
+                background: #3498db;
+                border: 1px solid #1f78b4;
+                width: 14px;
+                margin: -6px 0;
+                border-radius: 7px;
+            }
+        """)
+        slider.valueChanged.connect(self.on_history_slider_changed)
+        history_layout.addWidget(slider, 1)
+
+        history_value = QLabel("LIVE")
+        history_value.setStyleSheet("color: #7f8c8d; font-size: 10pt; font-weight: bold;")
+        history_layout.addWidget(history_value)
+
+        history_frame.setVisible(False)
+        plot_layout.addWidget(history_frame)
+
+        self.history_slider = slider
+        self.history_slider_label = history_value
+        self.history_slider_frame = history_frame
         plot_layout.addWidget(control_frame)
         
         parent_layout.addWidget(plot_frame, 7) # Plot takes ~70% of horizontal space
@@ -753,7 +792,7 @@ class ExpandedLeadView(QDialog):
                         fontsize=16, color='gray')
             return
         
-        # Calculate time axis based on demo mode or normal mode
+# Calculate time axis based on demo mode or normal mode
         if self.demo_mode_active and self.demo_manager:
             # Demo mode: use time window from demo manager
             try:
@@ -784,7 +823,6 @@ class ExpandedLeadView(QDialog):
                 print(f"⚠️ Error calculating time window in setup: {e}")
                 # Fallback: use sampling rate
                 time = np.arange(len(self.ecg_data)) / self.sampling_rate
-        
         # Plot at 1.0x to establish baseline
         scaled = self.ecg_data * self.display_gain * 1.0  # Use 1.0x for baseline
         
@@ -793,7 +831,7 @@ class ExpandedLeadView(QDialog):
         
         self.ax.plot(time, scaled, color='#0984e3', linewidth=1.0, label='ECG Signal')
         
-        self.ax.set_xlabel('Time (seconds)', fontsize=14, fontweight='bold', color='#34495e')
+self.ax.set_xlabel('Time (seconds)', fontsize=14, fontweight='bold', color='#34495e')
         self.ax.set_ylabel('Amplitude (mV)', fontsize=14, fontweight='bold', color='#34495e')
         
         # Add demo mode or wave speed info to title
@@ -895,7 +933,7 @@ class ExpandedLeadView(QDialog):
     
     def create_metrics_cards(self):
         """Create individual metric cards"""
-        # Include Heart Rate and R-R Interval display as requested
+# Include Heart Rate and R-R Interval display as requested
         metrics = [
             ("Heart Rate", 0, "bpm", "#e74c3c"),
             ("RR Interval", 0, "ms", "#2980b9"),
@@ -912,7 +950,7 @@ class ExpandedLeadView(QDialog):
         # Add a stretch at the end
         self.metrics_vbox.addStretch(1)
         
-        # Initialize with some default values for testing
+# Initialize with some default values for testing
         self.update_metric('heart_rate', 0)
         self.update_metric('rr_interval', 0)
         self.update_metric('pr_interval', 0)
@@ -923,8 +961,7 @@ class ExpandedLeadView(QDialog):
         """Start live data updates"""
         self.is_live = True
         self.timer.start(100)  # Update every 100ms
-    
-    def on_wave_speed_changed(self):
+def on_wave_speed_changed(self):
         """Handle wave speed changes in both demo mode and normal mode"""
         try:
             parent = self.parent()
@@ -975,20 +1012,18 @@ class ExpandedLeadView(QDialog):
         self.timer.stop()
     
     def update_live_data(self):
-        """Update ECG data from parent (hardware or demo)"""
+"""Update ECG data from parent (hardware or demo)"""
         if not self.is_live or not hasattr(self, 'parent') or self.parent() is None:
             return
         
         try:
             # Get current data from parent ECG test page
             parent = self.parent()
-            
-            # Check if demo mode is active - update flag
+# Check if demo mode is active - update flag
             if hasattr(parent, 'demo_toggle'):
                 self.demo_mode_active = parent.demo_toggle.isChecked()
                 if hasattr(parent, 'demo_manager'):
                     self.demo_manager = parent.demo_manager
-            
             # Align sampling rate with parent so HR/RR match dashboard
             try:
                 if hasattr(parent, 'sampler') and getattr(parent.sampler, 'sampling_rate', 0):
@@ -1001,14 +1036,13 @@ class ExpandedLeadView(QDialog):
                     self.arrhythmia_detector.fs = self.sampling_rate
             except Exception:
                 pass
-            
             if hasattr(parent, 'data') and len(parent.data) > 0:
                 # Find the lead index for this lead
                 lead_index = self.get_lead_index()
                 if lead_index is not None and lead_index < len(parent.data):
                     new_data = parent.data[lead_index]
                     if len(new_data) > 0:
-                        # In demo mode, apply wave speed and gain adjustments
+# In demo mode, apply wave speed and gain adjustments
                         if self.demo_mode_active and self.demo_manager:
                             # Get wave speed settings from demo manager
                             try:
@@ -1122,7 +1156,7 @@ class ExpandedLeadView(QDialog):
             return
         
         try:
-            # Clear the plot
+# Clear the plot
             self.ax.clear()
             
             # Apply amplification around the baseline, not around 0
@@ -1217,7 +1251,6 @@ class ExpandedLeadView(QDialog):
             
             # Redraw
             self.canvas.draw()
-            
         except Exception as e:
             print(f"Error updating plot: {e}")
     
@@ -1252,6 +1285,10 @@ class ExpandedLeadView(QDialog):
                 # Ensure live mode is active for this view
                 if not self.is_live:
                     self.start_live_mode()
+self.history_slider_active = False
+                self.manual_view = False
+                if self.history_slider_frame:
+                    self.history_slider_frame.setVisible(False)
                     
                 print("✅ Acquisition started successfully from expanded view")
             else:
@@ -1270,6 +1307,12 @@ class ExpandedLeadView(QDialog):
             if parent and hasattr(parent, 'stop_acquisition'):
                 print("⏹️ Stopping acquisition from expanded lead view...")
                 parent.stop_acquisition()
+self.stop_live_mode()
+                self.history_slider_active = True
+                self.manual_view = False
+                if self.history_slider_frame:
+                    self.history_slider_frame.setVisible(True)
+                self.update_history_slider()
                 
                 # Update button states
                 self.expanded_start_btn.setEnabled(True)
@@ -1363,10 +1406,17 @@ class ExpandedLeadView(QDialog):
             arrhythmias = self.arrhythmia_detector.detect_arrhythmias(self.ecg_data, analysis['r_peaks'])
             self.update_arrhythmia_display(arrhythmias)
             
+# Generate heat map data
+            heat_map_data = self.arrhythmia_detector.detect_arrhythmias_with_probabilities(
+                self.ecg_data, analysis['r_peaks'], window_size=2.0
+            )
+            self.prepare_heatmap_overlay(heat_map_data)
             self.update_plot_with_markers(analysis)
         except Exception as e:
             print(f"Error in ECG analysis: {e}")
             self.arrhythmia_list.setText("An error occurred during analysis.")
+import traceback
+            traceback.print_exc()
     
     def calculate_metrics(self, analysis):
         """Calculate ECG metrics from analysis results"""
@@ -1423,7 +1473,7 @@ class ExpandedLeadView(QDialog):
                 if qrs_durations:
                     self.update_metric('qrs_duration', int(np.mean(qrs_durations)))
             
-            # QTc Interval (Bazett's formula)
+# QTc Interval (Bazett's formula)
             if 'rr_interval' in self.metrics_cards and self.metrics_cards['rr_interval'].value > 0:
                 rr_sec = self.metrics_cards['rr_interval'].value / 1000.0
                 # Simplified QT, actual QT needs T-wave end detection
@@ -1502,6 +1552,6 @@ if __name__ == "__main__":
     sample_ecg = p_wave + qrs_complex + t_wave + noise
     
     dialog = ExpandedLeadView("Lead II", sample_ecg, fs)
-    dialog.show()
+dialog.show()
     
     sys.exit(app.exec_())

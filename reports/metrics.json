@@ -1,13 +1,13 @@
 [
   {
-    "timestamp": "2025-11-17 16:11:35",
+"timestamp": "2025-11-17 16:11:35",
     "file": "/Users/ptr/Downloads/ECG_Report_20251117_161132.pdf",
     "HR_bpm": 60,
     "PR_ms": 160,
     "QRS_ms": 85,
     "QT_ms": 360,
     "QTc_ms": 380,
-    "ST_ms": -2,
+"ST_ms": -2,
     "RR_ms": 1000,
     "Sokolow_Lyon_mV": 2.92,
     "P_QRS_T_axes_deg": [
@@ -21,7 +21,7 @@
     ]
   },
   {
-    "timestamp": "2025-11-17 18:00:05",
+"timestamp": "2025-11-17 18:00:05",
     "file": "/Users/ptr/Desktop/untitled folder/ECG_Report_20251117_175957.pdf",
     "HR_bpm": 60,
     "PR_ms": 176,
@@ -58,7 +58,7 @@
       "--"
     ],
     "RV5_SV1_mV": [
-      1.73,
+1.73,
       0.91
     ]
   }

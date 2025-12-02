@@ -174,7 +174,7 @@ def capture_real_ecg_graphs_from_dashboard(dashboard_instance=None, ecg_test_pag
         "V1": 6, "V2": 7, "V3": 8, "V4": 9, "V5": 10, "V6": 11
     }
     
-    # Check if demo mode is active and get time window for filtering
+# Check if demo mode is active and get time window for filtering
     is_demo_mode = False
     time_window_seconds = None
     samples_per_second = 150  # Default demo sampling rate
@@ -517,6 +517,7 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
             "QRS": 0,
             "QT": 0,
             "QTc": 0,
+"QTcF": 0,
             "ST": 0,
             "HR_max": 0,
             "HR_min": 0,
@@ -531,7 +532,7 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
     # SAFEGUARD: If there is no real data (all core metrics are zero), ignore any
     # persisted conclusions and use the explicit "no data" conclusions instead.
     try:
-        core_keys = ["HR", "PR", "QRS", "QT", "QTc", "ST"]
+core_keys = ["HR", "PR", "QRS", "QT", "QTc", "ST"]
         all_zero = True
         for k in core_keys:
             v = data.get(k, 0)
@@ -738,6 +739,7 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
         ["QRS Complex", f"{data['QRS']} ms", "70 ms - 120 ms"],            
         ["QT Interval", f"{data['QT']} ms", "300 ms - 450 ms"],            
         ["QTC Interval", f"{data['QTc']} ms", "300 ms - 450 ms"],          
+["QTCF Interval", f"{data.get('QTcF', data['QTc'])} ms", "300 ms - 450 ms"],
         ["QRS Axis", f"{data.get('QRS_axis', '--')}°", "Normal"],         
         ["ST Segment", f"{data['ST']} mV", "-0.5 mV to +1.0 mV"],  # Changed from ms to mV            
     ]
@@ -956,17 +958,17 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
     QRS = data.get('QRS', 93)
     QT = data.get('QT', 354)
     QTc = data.get('QTc', 260)
-    ST = data.get('ST', 114)
+ST = data.get('ST', 114)
     # DYNAMIC RR interval calculation from heart rate (instead of hard-coded 857)
     RR = int(60000 / HR) if HR and HR > 0 else 0  # RR interval in ms from heart rate
    
 
     # Create table data: 2 rows × 2 columns (as per your changes)
     vital_table_data = [
-        [f"HR : {HR} bpm", f"QT: {QT} ms"],
+[f"HR : {HR} bpm", f"QT: {QT} ms"],
         [f"PR : {PR} ms", f"QTc: {QTc} ms"],
         [f"QRS: {QRS} ms", f"ST: {ST} mV"],  # Changed from ms to mV (voltage)
-        [f"RR : {RR} ms", ""]  
+        [f"RR : {RR} ms", ""]
     ]
 
     # Create vital parameters table with MORE LEFT and TOP positioning
@@ -1018,7 +1020,7 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
     # STEP 3: Draw ALL ECG content directly in master drawing
     successful_graphs = 0
     
-    # Check if demo mode is active and get time window for filtering
+# Check if demo mode is active and get time window for filtering
     is_demo_mode = False
     time_window_seconds = None
     samples_per_second = 150  # Default demo sampling rate
@@ -1069,7 +1071,7 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
                               fontSize=10, fontName="Helvetica-Bold", fillColor=colors.black)
             master_drawing.add(lead_label)
             
-            # STEP 3B: Get REAL ECG data for this lead (filtered by demo mode window if applicable)
+# STEP 3B: Get REAL ECG data for this lead (filtered by demo mode window if applicable)
             real_data_available = False
             if ecg_test_page and hasattr(ecg_test_page, 'data'):
                 lead_to_index = {
@@ -1078,7 +1080,7 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
                 }
                 
                 if lead == "-aVR" and len(ecg_test_page.data) > 3:
-                    # For -aVR, use filtered inverted aVR data
+# For -aVR, use filtered inverted aVR data
                     raw_data = ecg_test_page.data[3][-num_samples_to_capture:]
                     # Check if data is not all zeros or flat
                     if len(raw_data) > 0 and np.std(raw_data) > 0.01:
@@ -1099,7 +1101,7 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
                         if len(raw_data) > 0 and np.std(raw_data) > 0.01:
                             real_ecg_data = np.array(raw_data)
                             real_data_available = True
-                            if is_demo_mode and time_window_seconds is not None:
+if is_demo_mode and time_window_seconds is not None:
                                 print(f"✅ Using DEMO {lead} data: {len(real_ecg_data)} points ({time_window_seconds}s window, std: {np.std(real_ecg_data):.2f})")
                             else:
                                 print(f"✅ Using ALL available {lead} data: {len(real_ecg_data)} points (std: {np.std(real_ecg_data):.2f})")
@@ -1141,7 +1143,7 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
                 # Add path to master drawing
                 master_drawing.add(ecg_path)
                 
-                if is_demo_mode and time_window_seconds is not None:
+if is_demo_mode and time_window_seconds is not None:
                     print(f"✅ Added DEMO ECG data for Lead {lead}: {len(real_ecg_data)} points ({time_window_seconds}s window - visible peaks only)")
                 else:
                     print(f"✅ Added ALL REAL ECG data for Lead {lead}: {len(real_ecg_data)} points (MAXIMUM heartbeats)")
@@ -1208,10 +1210,9 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
     qtc_label = String(130, 576, f"QTc  : {QTc} ms", 
                      fontSize=10, fontName="Helvetica", fillColor=colors.black)
     master_drawing.add(qtc_label)
-    
-    # SECOND COLUMN (Right side - x=240)
+# SECOND COLUMN (Right side - x=240)
     # ST segment is voltage (mV), not time (ms)
-    st_label = String(240, 594, f"ST            : {ST} mV", 
+    st_label = String(240, 594, f"ST            : {ST} mV",
                      fontSize=10, fontName="Helvetica", fillColor=colors.black)
     master_drawing.add(st_label)
 
@@ -1318,6 +1319,10 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
                     r_peaks, _ = find_peaks(integrated, height=threshold, distance=int(0.6*fs))
                     
                     if len(r_peaks) >= 2:
+lead_I_arr = np.asarray(lead_I)
+                        lead_aVF_arr = np.asarray(lead_aVF)
+                        filtered_i = filtfilt(b, a, lead_I_arr)
+                        filtered_avf = filtfilt(b, a, lead_aVF_arr)
                         # Detect P-peaks (120-200ms before R)
                         p_peaks = []
                         for r in r_peaks:
@@ -1340,7 +1345,7 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
                                     t_idx = t_start + np.argmax(segment)
                                     t_peaks.append(t_idx)
                         
-                        # Calculate QRS axis (P and T axis calculations removed for simplification)
+# Calculate QRS axis (P and T axis calculations removed for simplification)
                         if len(r_peaks) >= 2:
                             qrs_axis_deg = calculate_qrs_axis(np.asarray(lead_I), np.asarray(lead_aVF), r_peaks, fs)
                         # P and T axes set to "--" (not calculated in simplified version)
@@ -1713,7 +1718,7 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
                 "QRS_ms": QRS,
                 "QT_ms": QT,
                 "QTc_ms": QTc,
-                "ST_ms": ST,
+"ST_ms": ST,
                 "RR_ms": RR,
                 "Sokolow_Lyon_mV": round(sokolow_lyon_mv, 2),  # SV1+RV5 in mV
                 "P_QRS_T_axes_deg": [p_axis_str, qrs_axis_str, t_axis_str],
@@ -1749,7 +1754,7 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
             "QRS_ms": QRS,
             "QT_ms": QT,
             "QTc_ms": QTc,
-            "ST_ms": ST,
+"ST_ms": ST,
             "RR_ms": RR,
             "Sokolow_Lyon_mV": round(sokolow_lyon_mv, 2),  # SV1+RV5 in mV
             "P_QRS_T_axes_deg": [p_axis_str, qrs_axis_str, t_axis_str],

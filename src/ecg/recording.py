@@ -223,6 +223,7 @@ class SlidingPanel(QWidget):
                 # Reposition if visible
                 if self.is_visible:
                     self.reposition_panel()
+                self.reposition_panel()
         
     def reposition_panel(self):
         if self.parent and self.is_visible:
@@ -680,6 +681,8 @@ class ECGMenu(QGroupBox):
             }}
         """)
         title.setAlignment(Qt.AlignCenter)
+# Prevent the header from stretching vertically when the parent window is maximized
+        title.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         layout.addWidget(title)
 
         # Main form container with responsive styling
