@@ -1741,7 +1741,7 @@ def show_expanded_lead_view(lead_name, ecg_data, sampling_rate=500, parent=None)
     dialog = ExpandedLeadView(lead_name, ecg_data, sampling_rate, parent)
     # Open maximized by default for best visibility on any monitor
     dialog.showMaximized()
-    dialog.exec_()
+    dialog.show()  # Non-modal: main window stays visible
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
