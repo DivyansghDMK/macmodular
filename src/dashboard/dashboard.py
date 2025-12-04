@@ -2814,22 +2814,31 @@ class Dashboard(QWidget):
             except:
                 qrs = 0
             
-            # Include rhythm interpretation findings first
+            # Include rhythm interpretation findings first (System detects: AFib, VT, PVCs, Bradycardia, Tachycardia, NSR)
             if rhythm_text:
                 rhythm_clean = rhythm_text.strip()
                 ignore_values = {"", "Analyzing Rhythm...", "Detecting...", "Insufficient Data", "Insufficient data"}
                 if rhythm_clean not in ignore_values:
                     is_normal_rhythm = any(keyword in rhythm_clean.lower() for keyword in ["normal sinus", "none detected", "sinus rhythm"])
                     prefix = "[OK]" if is_normal_rhythm else "[!]"
-                    findings.append(f"{prefix} <b>Rhythm Interpretation</b> - {rhythm_clean}")
+                    findings.append(f"{prefix} <b>Rhythm Analysis</b> - {rhythm_clean}")
                     if not is_normal_rhythm:
-                        recommendations.append("• Review arrhythmia finding in Rhythm Interpretation panel")
+                        recommendations.append("• Review detected arrhythmia pattern, consult physician if persistent")
             
-            # Analyze Heart Rate
-            if hr > 0:
-                if hr > 100:
+            # Analyze Heart Rate (System supports 10-300 BPM range with arrhythmia detection)
+            if hr >= 10 and hr <= 300:
+                if hr > 200:
+                    findings.append("[!] <b>Extreme Tachycardia</b> - Heart rate critically elevated")
+                    recommendations.append("• Immediate medical attention recommended")
+                elif hr > 150:
+                    findings.append("[!] <b>Severe Tachycardia</b> - Heart rate significantly elevated")
+                    recommendations.append("• Consult physician, check for arrhythmias")
+                elif hr > 100:
                     findings.append("[!] <b>Tachycardia detected</b> - Heart rate elevated above normal range")
-                    recommendations.append("• Consider relaxation techniques or consult physician")
+                    recommendations.append("• Monitor symptoms, consider medical evaluation")
+                elif hr < 40:
+                    findings.append("[!] <b>Severe Bradycardia</b> - Heart rate critically low")
+                    recommendations.append("• Immediate medical evaluation recommended")
                 elif hr < 60:
                     findings.append("[i] <b>Bradycardia detected</b> - Heart rate below normal range")
                     recommendations.append("• May be normal for athletes, monitor symptoms")
@@ -2840,21 +2849,23 @@ class Dashboard(QWidget):
             if pr > 0:
                 if pr > 200:
                     findings.append("[!] <b>Prolonged PR interval</b> - Possible first-degree heart block")
-                    recommendations.append("• Recommend clinical correlation and follow-up")
+                    recommendations.append("• Medical evaluation recommended for AV conduction assessment")
                 elif pr < 120:
-                    findings.append("[i] <b>Short PR interval</b> - May indicate pre-excitation")
+                    findings.append("[i] <b>Short PR interval</b> - May indicate pre-excitation syndrome")
+                    recommendations.append("• Monitor for accessory pathway patterns, consult if symptomatic")
                 else:
-                    findings.append("[OK] <b>Normal PR interval</b> - Conduction within normal limits")
+                    findings.append("[OK] <b>Normal PR interval</b> - Atrial-ventricular conduction normal")
             
             # Analyze QRS Duration
             if qrs > 0:
                 if qrs > 120:
-                    findings.append("[!] <b>Wide QRS complex</b> - Possible bundle branch block")
-                    recommendations.append("• Consider 12-lead ECG analysis for bundle branch pattern")
+                    findings.append("[!] <b>Wide QRS complex</b> - Possible bundle branch block or ventricular rhythm")
+                    recommendations.append("• 12-lead ECG analysis recommended for conduction pattern assessment")
                 elif qrs > 100:
-                    findings.append("[i] <b>Borderline QRS duration</b> - Monitor for changes")
+                    findings.append("[i] <b>Borderline QRS duration</b> - Early conduction delay detected")
+                    recommendations.append("• Monitor for progression, follow-up ECG if symptoms develop")
                 else:
-                    findings.append("[OK] <b>Normal QRS duration</b> - Ventricular conduction normal")
+                    findings.append("[OK] <b>Normal QRS duration</b> - Ventricular depolarization normal")
             
             # Check HRV/Stress
             if hasattr(self, '_current_hrv'):
