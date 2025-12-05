@@ -926,19 +926,19 @@ class ExpandedLeadView(QDialog):
         live_btn.setStyleSheet("""
             QPushButton {
                 background: #3498db;
-                color: white;
+                color: white; 
                 border-radius: 5px;
                 padding: 4px 8px;
-                font-weight: bold;
+                font-weight: bold; 
                 font-size: 9pt;
             }
-            QPushButton:hover {
+            QPushButton:hover { 
                 background: #2980b9;
             }
         """)
         live_btn.clicked.connect(self.return_to_live_view)
         history_layout.addWidget(live_btn)
-
+        
         # Show history slider by default (can be used anytime)
         history_frame.setVisible(True)
         plot_layout.addWidget(history_frame)
