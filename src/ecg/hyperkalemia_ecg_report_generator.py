@@ -175,13 +175,13 @@ def calculate_time_window_from_bpm_and_wave_speed(hr_bpm, wave_speed_mm_s, desir
     """
     Calculate optimal time window based on BPM and wave_speed
     
-    Important: Report में ECG graph की width = 33 boxes × 5mm = 165mm है
-    इसलिए wave_speed से time calculate करते समय यह factor use होगा:
+    Important: Report  ECG graph  width = 33 boxes × 5mm = 165mm 
+     wave_speed  time calculate    factor use :
         Time from wave_speed = (165mm / wave_speed_mm_s) seconds
     
     Formula:
         - Time window = (165mm / wave_speed_mm_s) seconds ONLY
-          (क्योंकि 33 boxes × 5mm = 165mm total width)
+          ( 33 boxes × 5mm = 165mm total width)
         - BPM window is NOT used - only wave speed window
         - Beats = (BPM / 60) × time_window
         - Final window clamped maximum 20 seconds (NO minimum clamp)
@@ -202,7 +202,7 @@ def calculate_time_window_from_bpm_and_wave_speed(hr_bpm, wave_speed_mm_s, desir
     Returns: (time_window_seconds, num_samples)
     """
     # Calculate time window from wave_speed ONLY (BPM window NOT used)
-    # Report में ECG graph width = 33 boxes × 5mm = 165mm
+    # Report  ECG graph width = 33 boxes × 5mm = 165mm
     # Time = Distance / Speed
     ecg_graph_width_mm = 33 * 5  # 33 boxes × 5mm = 165mm
     calculated_time_window = ecg_graph_width_mm / max(1e-6, wave_speed_mm_s)
@@ -854,11 +854,11 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
             return default
 
     # ==================== STEP 1: Get HR_bpm from metrics.json (PRIORITY) ====================
-    # Priority: metrics.json से latest HR_bpm लो (calculation-based beats के लिए)
+    # Priority: metrics.json  latest HR_bpm  (calculation-based beats  )
     latest_metrics = load_latest_metrics_entry(reports_dir)
     hr_bpm_value = 0
     
-    # Priority 1: metrics.json से latest HR_bpm (CALCULATION-BASED BEATS के लिए REQUIRED)
+    # Priority 1: metrics.json  latest HR_bpm (CALCULATION-BASED BEATS   REQUIRED)
     if latest_metrics:
         hr_bpm_value = _safe_int(latest_metrics.get("HR_bpm"))
         if hr_bpm_value > 0:
@@ -886,7 +886,7 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
         data["RR_ms"] = data.get("RR_ms", 0)
 
     # ==================== STEP 2: Get wave_speed from ecg_settings.json (PRIORITY) ====================
-    # Priority: ecg_settings.json से wave_speed लो (calculation-based beats के लिए)
+    # Priority: ecg_settings.json  wave_speed  (calculation-based beats  )
     wave_speed_setting = settings_manager.get_setting("wave_speed", "25")
     wave_gain_setting = settings_manager.get_setting("wave_gain", "10")
     wave_speed_mm_s = _safe_float(wave_speed_setting, 25.0)  # Default: 25.0 mm/s
@@ -905,7 +905,7 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
     print(f"   Wave speed window: 165mm / {wave_speed_mm_s}mm/s = {165.0 / wave_speed_mm_s:.2f}s")
     
     # ==================== STEP 3: SAVE ECG DATA TO FILE (ALWAYS) ====================
-    # IMPORTANT: हमेशा data file में save करो, फिर उसी से load करो (calculation-based beats के लिए)
+    # IMPORTANT:  data file  save ,    load  (calculation-based beats  )
     saved_ecg_data = None
     saved_data_file_path = None
     
@@ -1457,7 +1457,7 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
             master_drawing.add(lead_label)
             
             # STEP 3B: Get REAL ECG data for this lead (ONLY from saved file - calculation-based)
-            # IMPORTANT: हमेशा saved file से data use करो, live dashboard से नहीं (calculation-based beats के लिए)
+            # IMPORTANT:  saved file  data use , live dashboard   (calculation-based beats  )
             real_data_available = False
             real_ecg_data = None
             
@@ -1956,7 +1956,7 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
             master_drawing.add(lead_label)
             
             # STEP 3B: Get REAL ECG data for this lead (ONLY from saved file - calculation-based)
-            # IMPORTANT: हमेशा saved file से data use करो, live dashboard से नहीं (calculation-based beats के लिए)
+            # IMPORTANT:  saved file  data use , live dashboard   (calculation-based beats  )
             real_data_available = False
             real_ecg_data = None
             
@@ -3392,7 +3392,7 @@ def generate_hyperkalemia_ecg_report(filename="hyperkalemia_ecg_report.pdf", lea
     
     hr_bpm_value = 0
     
-    # Priority 1: metrics.json से latest HR_bpm
+    # Priority 1: metrics.json  latest HR_bpm
     if latest_metrics:
         hr_bpm_value = _safe_int(latest_metrics.get("HR_bpm"))
         if hr_bpm_value > 0:

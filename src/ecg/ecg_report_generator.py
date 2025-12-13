@@ -171,13 +171,13 @@ def calculate_time_window_from_bpm_and_wave_speed(hr_bpm, wave_speed_mm_s, desir
     """
     Calculate optimal time window based on BPM and wave_speed
     
-    Important: Report में ECG graph की width = 33 boxes × 5mm = 165mm है
-    इसलिए wave_speed से time calculate करते समय यह factor use होगा:
+    Important: Report  ECG graph  width = 33 boxes × 5mm = 165mm 
+     wave_speed  time calculate    factor use :
         Time from wave_speed = (165mm / wave_speed_mm_s) seconds
     
     Formula:
         - Time window = (165mm / wave_speed_mm_s) seconds ONLY
-          (क्योंकि 33 boxes × 5mm = 165mm total width)
+          ( 33 boxes × 5mm = 165mm total width)
         - BPM window is NOT used - only wave speed window
         - Beats = (BPM / 60) × time_window
         - Final window clamped maximum 20 seconds (NO minimum clamp)
@@ -198,7 +198,7 @@ def calculate_time_window_from_bpm_and_wave_speed(hr_bpm, wave_speed_mm_s, desir
     Returns: (time_window_seconds, num_samples)
     """
     # Calculate time window from wave_speed ONLY (BPM window NOT used)
-    # Report में ECG graph width = 33 boxes × 5mm = 165mm
+    # Report  ECG graph width = 33 boxes × 5mm = 165mm
     # Time = Distance / Speed
     ecg_graph_width_mm = 33 * 5  # 33 boxes × 5mm = 165mm
     calculated_time_window = ecg_graph_width_mm / max(1e-6, wave_speed_mm_s)
@@ -865,11 +865,11 @@ def generate_ecg_report(
             return default
 
     # ==================== STEP 1: Get HR_bpm from metrics.json (PRIORITY) ====================
-    # Priority: metrics.json से latest HR_bpm लो (calculation-based beats के लिए)
+    # Priority: metrics.json  latest HR_bpm  (calculation-based beats  )
     latest_metrics = load_latest_metrics_entry(reports_dir)
     hr_bpm_value = 0
     
-    # Priority 1: metrics.json से latest HR_bpm (CALCULATION-BASED BEATS के लिए REQUIRED)
+    # Priority 1: metrics.json  latest HR_bpm (CALCULATION-BASED BEATS   REQUIRED)
     if latest_metrics:
         hr_bpm_value = _safe_int(latest_metrics.get("HR_bpm"))
         if hr_bpm_value > 0:
@@ -897,7 +897,7 @@ def generate_ecg_report(
         data["RR_ms"] = data.get("RR_ms", 0)
 
     # ==================== STEP 2: Get wave_speed from ecg_settings.json (PRIORITY) ====================
-    # Priority: ecg_settings.json से wave_speed लो (calculation-based beats के लिए)
+    # Priority: ecg_settings.json  wave_speed  (calculation-based beats  )
     wave_speed_setting = settings_manager.get_setting("wave_speed", "25")
     wave_gain_setting = settings_manager.get_setting("wave_gain", "10")
     wave_speed_mm_s = _safe_float(wave_speed_setting, 25.0)  # Default: 25.0 mm/s
@@ -916,7 +916,7 @@ def generate_ecg_report(
     print(f"   Wave speed window: 165mm / {wave_speed_mm_s}mm/s = {165.0 / wave_speed_mm_s:.2f}s")
     
     # ==================== STEP 3: SAVE ECG DATA TO FILE (ALWAYS) ====================
-    # IMPORTANT: हमेशा data file में save करो, फिर उसी से load करो (calculation-based beats के लिए)
+    # IMPORTANT:  data file  save ,    load  (calculation-based beats  )
     saved_ecg_data = None
     saved_data_file_path = None
     
@@ -1467,7 +1467,7 @@ def generate_ecg_report(
             master_drawing.add(lead_label)
             
             # STEP 3B: Get REAL ECG data for this lead (ONLY from saved file - calculation-based)
-            # IMPORTANT: हमेशा saved file से data use करो, live dashboard से नहीं (calculation-based beats के लिए)
+            # IMPORTANT:  saved file  data use , live dashboard   (calculation-based beats  )
             real_data_available = False
             real_ecg_data = None
             
@@ -1680,26 +1680,23 @@ def generate_ecg_report(
                 # Step 1: Convert ADC data to numpy array
                 adc_data = np.array(real_ecg_data, dtype=float)
                 
-                # DEBUG: Check if data is already processed (baseline-subtracted)
-                # If data range is far from 2000 baseline, it might already be processed
+                # Step 1: Apply baseline correction based on data type
                 data_mean = np.mean(adc_data)
-                data_std = np.std(adc_data)
-                
-                # Step 2: Apply baseline 2000 (subtract baseline from ADC values)
-                # IMPORTANT: For calculated leads (III, aVR, aVL, aVF), data is already calculated from processed I and II
-                # So it's already centered (mean ~0), but we still need to scale it properly
                 baseline_adc = 2000.0
                 is_calculated_lead = lead in ["III", "aVR", "aVL", "aVF", "-aVR"]
                 
                 if abs(data_mean - 2000.0) < 500:  # Data is close to baseline 2000 (raw ADC)
-                    centered_adc = adc_data - baseline_adc
+                    baseline_corrected = adc_data - baseline_adc
                 elif is_calculated_lead:
-                    # For calculated leads, data is already centered from calculation (II - I, etc.)
-                    # The calculated value is already the difference, so it's centered around 0
-                    # We use it directly without baseline subtraction
-                    centered_adc = adc_data  # Use data as-is (already centered from calculation)
-                else:  # Data is already processed (baseline-subtracted or filtered)
-                    centered_adc = adc_data  # Use data as-is (already centered)
+                    baseline_corrected = adc_data  # Calculated leads already centered
+                else:
+                    baseline_corrected = adc_data  # Already processed data
+                
+                # Step 2: FORCE CENTER for report - subtract mean to ensure perfect centering
+                # IMPORTANT: Report me har lead apni grid line ke center me dikhni chahiye
+                # Chahe baseline wander kitna bhi ho (respiration mode, Fluke data, etc.)
+                # This ensures waveform is exactly centered on grid line regardless of baseline wander
+                centered_adc = baseline_corrected - np.mean(baseline_corrected)
                 
                 # Step 3: Calculate ADC per box based on wave_gain and lead-specific multiplier
                 # LEAD-SPECIFIC ADC PER BOX CONFIGURATION
@@ -1966,7 +1963,7 @@ def generate_ecg_report(
             master_drawing.add(lead_label)
             
             # STEP 3B: Get REAL ECG data for this lead (ONLY from saved file - calculation-based)
-            # IMPORTANT: हमेशा saved file से data use करो, live dashboard से नहीं (calculation-based beats के लिए)
+            # IMPORTANT:  saved file  data use , live dashboard   (calculation-based beats  )
             real_data_available = False
             real_ecg_data = None
             
@@ -2178,26 +2175,23 @@ def generate_ecg_report(
                 # Step 1: Convert ADC data to numpy array
                 adc_data = np.array(real_ecg_data, dtype=float)
                 
-                # DEBUG: Check if data is already processed (baseline-subtracted)
-                # If data range is far from 2000 baseline, it might already be processed
+                # Step 1: Apply baseline correction based on data type
                 data_mean = np.mean(adc_data)
-                data_std = np.std(adc_data)
-                
-                # Step 2: Apply baseline 2000 (subtract baseline from ADC values)
-                # IMPORTANT: For calculated leads (III, aVR, aVL, aVF), data is already calculated from processed I and II
-                # So it's already centered (mean ~0), but we still need to scale it properly
                 baseline_adc = 2000.0
                 is_calculated_lead = lead in ["III", "aVR", "aVL", "aVF", "-aVR"]
                 
                 if abs(data_mean - 2000.0) < 500:  # Data is close to baseline 2000 (raw ADC)
-                    centered_adc = adc_data - baseline_adc
+                    baseline_corrected = adc_data - baseline_adc
                 elif is_calculated_lead:
-                    # For calculated leads, data is already centered from calculation (II - I, etc.)
-                    # The calculated value is already the difference, so it's centered around 0
-                    # We use it directly without baseline subtraction
-                    centered_adc = adc_data  # Use data as-is (already centered from calculation)
-                else:  # Data is already processed (baseline-subtracted or filtered)
-                    centered_adc = adc_data  # Use data as-is (already centered)
+                    baseline_corrected = adc_data  # Calculated leads already centered
+                else:
+                    baseline_corrected = adc_data  # Already processed data
+                
+                # Step 2: FORCE CENTER for report - subtract mean to ensure perfect centering
+                # IMPORTANT: Report me har lead apni grid line ke center me dikhni chahiye
+                # Chahe baseline wander kitna bhi ho (respiration mode, Fluke data, etc.)
+                # This ensures waveform is exactly centered on grid line regardless of baseline wander
+                centered_adc = baseline_corrected - np.mean(baseline_corrected)
                     
                 
                 # Step 3: Calculate ADC per box based on wave_gain and lead-specific multiplier
@@ -2461,7 +2455,7 @@ def generate_ecg_report(
             master_drawing.add(lead_label)
             
             # STEP 3B: Get REAL ECG data for this lead (ONLY from saved file - calculation-based)
-            # IMPORTANT: हमेशा saved file से data use करो, live dashboard से नहीं (calculation-based beats के लिए)
+            # IMPORTANT:  saved file  data use , live dashboard   (calculation-based beats  )
             real_data_available = False
             real_ecg_data = None
             
@@ -2672,25 +2666,23 @@ def generate_ecg_report(
                 # Step 1: Convert ADC data to numpy array
                 adc_data = np.array(real_ecg_data, dtype=float)
                 
-                # DEBUG: Check if data is already processed (baseline-subtracted)
+                # Step 1: Apply baseline correction based on data type
                 data_mean = np.mean(adc_data)
-                data_std = np.std(adc_data)
+                baseline_adc = 2000.0
                 is_calculated_lead = lead in ["III", "aVR", "aVL", "aVF", "-aVR"]
                 
-                # Step 2: Apply baseline 2000 (subtract baseline from ADC values)
-                # IMPORTANT: For calculated leads, data is already calculated from processed I and II
-                # So it's already centered (mean ~0), but we still need to scale it properly
-                baseline_adc = 2000.0
-                
                 if abs(data_mean - 2000.0) < 500:  # Data is close to baseline 2000 (raw ADC)
-                    centered_adc = adc_data - baseline_adc
+                    baseline_corrected = adc_data - baseline_adc
                 elif is_calculated_lead:
-                    # For calculated leads, data is already centered from calculation (II - I, etc.)
-                    # The calculated value is already the difference, so it's centered around 0
-                    # We use it directly without baseline subtraction
-                    centered_adc = adc_data  # Use data as-is (already centered from calculation)
-                else:  # Data is already processed (baseline-subtracted or filtered)
-                    centered_adc = adc_data  # Use data as-is (already centered)
+                    baseline_corrected = adc_data  # Calculated leads already centered
+                else:
+                    baseline_corrected = adc_data  # Already processed data
+                
+                # Step 2: FORCE CENTER for report - subtract mean to ensure perfect centering
+                # IMPORTANT: Report me har lead apni grid line ke center me dikhni chahiye
+                # Chahe baseline wander kitna bhi ho (respiration mode, Fluke data, etc.)
+                # This ensures waveform is exactly centered on grid line regardless of baseline wander
+                centered_adc = baseline_corrected - np.mean(baseline_corrected)
                 
                 # Step 3: Calculate ADC per box based on wave_gain and lead-specific multiplier
                 # LEAD-SPECIFIC ADC PER BOX CONFIGURATION

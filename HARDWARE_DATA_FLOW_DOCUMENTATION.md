@@ -109,24 +109,24 @@ aVR = -(I + II) / 2
 **Medical Basis**: aVR is the average of Lead I and Lead II, inverted. It represents the potential from the right arm perspective.
 
 #### Augmented Lead aVL
-**Formula**: `aVL = (I - II) / 2`
+**Formula**: `aVL = (I - III) / 2`
 
-**Code Location**: `src/ecg/twelve_lead_test.py:1516`
+**Code Location**: `src/ecg/twelve_lead_test.py:1805`
 ```python
-aVL = (I - II) / 2
+aVL = (I - III) / 2
 ```
 
-**Medical Basis**: aVL represents the potential from the left arm, calculated as the difference between Lead I and Lead II, divided by 2.
+**Medical Basis**: aVL represents the potential from the left arm, calculated as (Lead I - Lead III) divided by 2. Since Lead III = Lead II - Lead I, this can also be expressed as (Lead I - (Lead II - Lead I))/2 = (2*Lead I - Lead II)/2.
 
 #### Augmented Lead aVF
-**Formula**: `aVF = (II - I) / 2`
+**Formula**: `aVF = (II + III) / 2`
 
-**Code Location**: `src/ecg/twelve_lead_test.py:1521`
+**Code Location**: `src/ecg/twelve_lead_test.py:1810`
 ```python
-aVF = (II - I) / 2
+aVF = (II + III) / 2
 ```
 
-**Medical Basis**: aVF represents the potential from the left leg (foot), calculated as the difference between Lead II and Lead I, divided by 2.
+**Medical Basis**: aVF represents the potential from the left leg (foot), calculated as (Lead II + Lead III) divided by 2. Since Lead III = Lead II - Lead I, this can also be expressed as (Lead II + (Lead II - Lead I))/2 = (2*Lead II - Lead I)/2.
 
 **Note**: There's a discrepancy in the code. The formula `(II - I) / 2` is mathematically equivalent to `III / 2`, but the standard medical formula for aVF is `(II + III) / 2`. However, since `III = II - I`, we get:
 - Standard: `aVF = (II + III) / 2 = (II + (II - I)) / 2 = (2*II - I) / 2`
