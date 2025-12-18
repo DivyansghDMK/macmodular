@@ -2854,7 +2854,7 @@ def generate_ecg_report(filename="ecg_report.pdf", data=None, lead_images=None, 
     rv5_sv_label = String(240, 720, f"RV5/SV1  : {rv5_mv:.3f} mV/{sv1_mv:.3f} mV",  # SV1 will show as negative
                           fontSize=10, fontName="Helvetica", fillColor=colors.black)
     master_drawing.add(rv5_sv_label)
-    
+
     # Calculate RV5+SV1 = RV5 + abs(SV1) (GE/Philips standard)
     # SV1 is negative, so RV5+SV1 = RV5 + abs(SV1) for Sokolow-Lyon index
     rv5_sv1_sum = rv5_mv + abs(sv1_mv)  # RV5 + abs(SV1) as per GE/Philips standard

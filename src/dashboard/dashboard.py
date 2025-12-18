@@ -1558,28 +1558,17 @@ class Dashboard(QWidget):
             if len(ecg_signal) < 200:
                 return {}
             
-            # CRITICAL: Get actual sampling rate from ECG test page (Windows may use 80 Hz, not 500 Hz)
-            # Default fallback: 80 Hz (Windows default) instead of 250 Hz to match actual hardware
-            fs = 80.0  # Default fallback - Windows typically uses 80 Hz
-            if sampling_rate and sampling_rate > 0:
+            # CRITICAL: Get actual sampling rate from ECG test page
+            fs = 186.5  # Base fallback based on hardware
+            if sampling_rate and sampling_rate > 10:
                 fs = float(sampling_rate)
             elif hasattr(self, 'ecg_test_page') and self.ecg_test_page:
                 try:
-                    if hasattr(self.ecg_test_page, 'sampler') and hasattr(self.ecg_test_page.sampler, 'sampling_rate'):
-                        if self.ecg_test_page.sampler.sampling_rate:
+                    if hasattr(self, 'ecg_test_page') and hasattr(self.ecg_test_page, 'sampler') and hasattr(self.ecg_test_page.sampler, 'sampling_rate'):
+                        if self.ecg_test_page.sampler.sampling_rate > 10:
                             fs = float(self.ecg_test_page.sampler.sampling_rate)
-                            if fs <= 0 or fs > 1000:  # Sanity check
-                                fs = 80.0  # Use 80 Hz default for Windows
                 except Exception as e:
-                    print(f"⚠️ Error getting sampling rate for BPM calculation: {e}")
-                    fs = 80.0  # Use 80 Hz default for Windows
-            else:
-                # If no ECG test page available, try to auto-detect from signal characteristics
-                # Estimate sampling rate from signal length and expected duration
-                if len(ecg_signal) > 200:
-                    # Try to detect based on typical ECG characteristics
-                    # This is a fallback if sampling rate detection completely fails
-                    fs = 80.0  # Default to Windows standard
+                    pass
             
             # Debug output for Windows troubleshooting (print first few times to help diagnose)
             if not hasattr(self, '_bpm_debug_count'):
@@ -1587,9 +1576,6 @@ class Dashboard(QWidget):
             self._bpm_debug_count += 1
             if self._bpm_debug_count <= 3:  # Print first 3 times
                 print(f"🔍 BPM Calculation - Sampling rate: {fs} Hz, Signal length: {len(ecg_signal)} samples")
-            if fs != 80.0 and fs != 250.0 and fs != 500.0:
-                if self._bpm_debug_count <= 3:
-                    print(f"⚠️ Unusual sampling rate detected: {fs} Hz - BPM calculation may be affected")
             
             # Apply bandpass filter to enhance R-peaks (0.5-40 Hz)
             nyquist = fs / 2
@@ -1832,11 +1818,12 @@ class Dashboard(QWidget):
         """Update dashboard metrics with live calculated values"""
         try:
             import time as _time
-            # Throttle: update at most once every 5 seconds
+            # Throttle: reduced to 1s for better responsiveness while maintaining stability
             if not hasattr(self, '_last_metrics_update_ts'):
                 self._last_metrics_update_ts = 0.0
-            if _time.time() - self._last_metrics_update_ts < 5.0:
+            if _time.time() - self._last_metrics_update_ts < 1.0:
                 return
+            self._last_metrics_update_ts = _time.time()
             # Do not update metrics for first-time users until acquisition/demo starts
             if not self.is_ecg_active():
                 return

@@ -2082,17 +2082,17 @@ def generate_ecg_report(
                 # Each lead can have different ADC per box multiplier (will be divided by wave_gain)
                 adc_per_box_config = {
                     'I': 5500.0,
-                    'II': 4955.0,  
-                    'III': 5213.0,  
-                    'aVR': 5353.0, 
+                    'II': 5500.0,  
+                    'III': 5500.0,  
+                    'aVR': 5500.0, 
                     'aVL': 5500.0,
-                    'aVF': 5353.0, 
+                    'aVF': 5500.0, 
                     'V1': 5500.0,
                     'V2': 5500.0,
                     'V3': 5500.0,
-                    'V4': 7586.0,  
-                    'V5': 7586.0,
-                    'V6': 8209.0,  
+                    'V4': 5500.0,  
+                    'V5': 5500.0,
+                    'V6': 5500.0,  
                     '-aVR': 5500.0,  # For Cabrera sequence
                 }
                 # Get lead-specific ADC per box multiplier (default: 5500)
@@ -2572,17 +2572,17 @@ def generate_ecg_report(
                 # Each lead can have different ADC per box multiplier (will be divided by wave_gain)
                 adc_per_box_config = {
                     'I': 5500.0,
-                    'II': 4955.0, 
-                    'III': 5213.0, 
-                    'aVR': 5353.0,  
+                    'II': 5500.0, 
+                    'III': 5500.0, 
+                    'aVR': 5500.0,  
                     'aVL': 5500.0,
-                    'aVF': 5353.0,  
+                    'aVF': 5500.0,  
                     'V1': 5500.0,
                     'V2': 5500.0,
                     'V3': 5500.0,
-                    'V4': 7586.0,  
-                    'V5': 7586.0, 
-                    'V6': 8209.0,  
+                    'V4': 5500.0,  
+                    'V5': 5500.0, 
+                    'V6': 5500.0,  
                     '-aVR': 5500.0,  # For Cabrera sequence
                 }
                 # Get lead-specific ADC per box multiplier (default: 5500)

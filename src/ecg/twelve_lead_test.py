@@ -1934,14 +1934,14 @@ class ECGTestPage(QWidget):
             return
         
         # Get sampling rate
-        fs = 80.0
-        if hasattr(self, 'sampler') and hasattr(self.sampler, 'sampling_rate') and self.sampler.sampling_rate:
+        fs = 186.5 # Default based on observed hardware behavior
+        if hasattr(self, 'sampler') and hasattr(self.sampler, 'sampling_rate') and self.sampler.sampling_rate > 10:
             fs = float(self.sampler.sampling_rate)
-        elif hasattr(self, 'sampling_rate') and self.sampling_rate:
+        elif hasattr(self, 'sampling_rate') and self.sampling_rate > 10:
             fs = float(self.sampling_rate)
         
         # Detect R-peaks in raw Lead II (fallback to V2 if Lead II insufficient) - GE/Philips standard
-        from scipy.signal import butter, filtfilt
+        from scipy.signal import butter, filtfilt, find_peaks
         nyquist = fs / 2
         low = 0.5 / nyquist
         high = 40 / nyquist
@@ -2055,55 +2055,148 @@ class ECGTestPage(QWidget):
         self.update_ecg_metrics_display(heart_rate, pr_interval, qrs_duration, qrs_axis, st_segment, qt_interval, qtc_interval)
 
     def calculate_heart_rate(self, lead_data):
-        """Calculate heart rate from Lead II data using R-R intervals (GE/Philips standard).
+        """Calculate heart rate from Lead II data using R-R intervals
         
-        Method: 60000 / median(RR intervals) over 10 seconds.
+        ⚠️ CLINICAL ANALYSIS: Must receive RAW clinical data, NOT display-processed data.
+        This function is called with self.data[1] which contains raw ECG values.
         """
         try:
-            # Ensure raw data
-            lead_data = np.asarray(lead_data, dtype=float)
-            if len(lead_data) < 200 or np.std(lead_data) < 0.1:
+            # Early exit: if no real signal, report 0 instead of fallback
+            try:
+                arr = np.asarray(lead_data, dtype=float)
+                if len(arr) < 200 or np.all(arr == 0) or np.std(arr) < 0.1:
+                    return 0
+            except Exception:
                 return 0
 
-            fs = 500  # Default sampling rate
-            if hasattr(self, 'sampler') and hasattr(self.sampler, 'sampling_rate') and self.sampler.sampling_rate:
-                fs = float(self.sampler.sampling_rate)
+            # Validate input data
+            if not isinstance(lead_data, (list, np.ndarray)) or len(lead_data) < 200:
+                print("❌ Insufficient data for heart rate calculation")
+                return 60  # Default fallback
 
-            # Filter for peak detection ONLY
-            from scipy.signal import butter, filtfilt
-            nyquist = fs / 2
-            b, a = butter(4, [0.5/nyquist, 40/nyquist], btype='band')
-            filtered = filtfilt(b, a, lead_data)
+            # Convert to numpy array for processing
+            try:
+                lead_data = np.asarray(lead_data, dtype=float)
+            except Exception as e:
+                print(f"❌ Error converting lead data to array: {e}")
+                return 60
 
-            # Find R-peaks
-            signal_std = np.std(filtered)
-            peaks, _ = find_peaks(
-                filtered, 
-                height=np.mean(filtered) + 0.5 * signal_std,
-                distance=int(0.2 * fs), # Max 300 BPM
-                prominence=signal_std * 0.4
-            )
+            # Check for invalid values
+            if np.any(np.isnan(lead_data)) or np.any(np.isinf(lead_data)):
+                print("❌ Invalid values (NaN/Inf) in lead data")
+                return 60
 
-            if len(peaks) < 2:
-                return 0
+            # Use measured sampling rate if available; default to 250 Hz
+            fs = 250
+            try:
+                if hasattr(self, 'sampler') and hasattr(self.sampler, 'sampling_rate') and self.sampler.sampling_rate > 10:
+                    fs = float(self.sampler.sampling_rate)
+                elif hasattr(self, 'sampling_rate') and self.sampling_rate > 10:
+                    fs = float(self.sampling_rate)
+            except Exception as e:
+                print(f"❌ Error getting sampling rate: {e}")
+                fs = 250
 
-            # Calculate RR intervals in ms
-            rr_intervals = np.diff(peaks) * (1000.0 / fs)
-            
-            # Filter physiologically plausible RR (200ms to 2000ms = 300 to 30 BPM)
-            valid_rr = rr_intervals[(rr_intervals >= 200) & (rr_intervals <= 2000)]
-            
-            if len(valid_rr) == 0:
-                return 0
+            # Apply bandpass filter to enhance R-peaks (0.5-40 Hz)
+            try:
+                from scipy.signal import butter, filtfilt
+                nyquist = fs / 2
+                low = max(0.001, 0.5 / nyquist)
+                high = min(0.999, 40 / nyquist)
+                if low >= high:
+                    print("❌ Invalid filter parameters")
+                    return 60
+                b, a = butter(4, [low, high], btype='band')
+                filtered_signal = filtfilt(b, a, lead_data)
+                if np.any(np.isnan(filtered_signal)) or np.any(np.isinf(filtered_signal)):
+                    print("❌ Filter produced invalid values")
+                    return 60
+            except Exception as e:
+                print(f"❌ Error in signal filtering: {e}")
+                return 60
 
-            # GE/Philips Standard: Use median RR for HR
-            median_rr = np.median(valid_rr)
-            hr = int(round(60000.0 / median_rr))
-            
-            return hr
-        except Exception as e:
-            print(f"❌ Error calculating heart rate: {e}")
-            return 0
+            # Find R-peaks using scipy with robust parameters
+            try:
+                from scipy.signal import find_peaks
+                signal_mean = np.mean(filtered_signal)
+                signal_std = np.std(filtered_signal)
+                if signal_std == 0:
+                    print("❌ No signal variation detected")
+                    return 60
+                
+                # SMART ADAPTIVE PEAK DETECTION (10-300 BPM with BPM-based selection)
+                # Run multiple detections and choose based on CALCULATED BPM
+                height_threshold = signal_mean + 0.5 * signal_std
+                prominence_threshold = signal_std * 0.4
+                
+                # Run 3 detection strategies
+                detection_results = []
+                
+                # Strategy 1: Conservative (best for 10-120 BPM)
+                peaks_conservative, _ = find_peaks(
+                    filtered_signal,
+                    height=height_threshold,
+                    distance=int(0.5 * fs),  # 400ms - wider distance for low BPM
+                    prominence=prominence_threshold
+                )
+                if len(peaks_conservative) >= 2:
+                    rr_cons = np.diff(peaks_conservative) * (1000 / fs)
+                    # Accept RR intervals from 200–6000 ms (300–10 BPM)
+                    valid_cons = rr_cons[(rr_cons >= 200) & (rr_cons <= 6000)]
+                    if len(valid_cons) > 0:
+                        bpm_cons = 60000 / np.median(valid_cons)
+                        std_cons = np.std(valid_cons)
+                        detection_results.append(('conservative', peaks_conservative, bpm_cons, std_cons))
+                
+                # Strategy 2: Normal (best for 100-180 BPM)
+                peaks_normal, _ = find_peaks(
+                    filtered_signal,
+                    height=height_threshold,
+                    distance=int(0.3 * fs),  # 240ms - medium distance
+                    prominence=prominence_threshold
+                )
+                if len(peaks_normal) >= 2:
+                    rr_norm = np.diff(peaks_normal) * (1000 / fs)
+                    # Accept RR intervals from 200–6000 ms (300–10 BPM)
+                    valid_norm = rr_norm[(rr_norm >= 200) & (rr_norm <= 6000)]
+                    if len(valid_norm) > 0:
+                        bpm_norm = 60000 / np.median(valid_norm)
+                        std_norm = np.std(valid_norm)
+                        detection_results.append(('normal', peaks_normal, bpm_norm, std_norm))
+                
+                # Strategy 3: Tight (best for 160-300 BPM)
+                peaks_tight, _ = find_peaks(
+                    filtered_signal,
+                    height=height_threshold,
+                    distance=int(0.2 * fs),  # 160ms - tight distance for high BPM
+                    prominence=prominence_threshold
+                )
+                if len(peaks_tight) >= 2:
+                    rr_tight = np.diff(peaks_tight) * (1000 / fs)
+                    # Accept RR intervals from 200–6000 ms (300–10 BPM)
+                    valid_tight = rr_tight[(rr_tight >= 200) & (rr_tight <= 6000)]
+                    if len(valid_tight) > 0:
+                        bpm_tight = 60000 / np.median(valid_tight)
+                        std_tight = np.std(valid_tight)
+                        detection_results.append(('tight', peaks_tight, bpm_tight, std_tight))
+                
+                # Select based on BPM consistency (lowest std deviation = most stable)
+                if detection_results:
+                    # Sort by consistency (lower std = better)
+                    detection_results.sort(key=lambda x: x[3])  # Sort by std
+                    best_method, peaks, best_bpm, best_std = detection_results[0]
+                    # print(f"🎯 Selected {best_method}: {best_bpm:.1f} BPM (std={best_std:.1f})")
+                else:
+                    # Fallback
+                    peaks, _ = find_peaks(
+                        filtered_signal,
+                        height=height_threshold,
+                        distance=int(0.4 * fs),
+                        prominence=prominence_threshold
+                    )
+            except Exception as e:
+                print(f"❌ Error in peak detection: {e}")
+                return 60
 
             if len(peaks) < 2:
                 print(f"❌ Insufficient peaks detected: {len(peaks)}")
@@ -2161,30 +2254,26 @@ class ECGTestPage(QWidget):
                 hr_int = int(round(heart_rate))
                 
                 # Initialize smoothing buffer
-                if not hasattr(self, '_bpm_smooth_buffer'):
-                    self._bpm_smooth_buffer = []
+                if not hasattr(self, '_hr_smooth_buffer'):
+                    self._hr_smooth_buffer = []
                 
-                # Add current reading to buffer
-                self._bpm_smooth_buffer.append(hr_int)
+                self._hr_smooth_buffer.append(hr_int)
+                if len(self._hr_smooth_buffer) > 5:  # 5-reading smoothing
+                    self._hr_smooth_buffer.pop(0)
                 
-                # Keep only last 5 readings for smoothing
-                if len(self._bpm_smooth_buffer) > 5:
-                    self._bpm_smooth_buffer.pop(0)
+                # Use median for smoothing to ignore outliers
+                smoothed_hr = int(round(np.median(self._hr_smooth_buffer)))
                 
-                # Return median of last 5 readings (very stable, no flickering)
-                smoothed_bpm = int(np.median(self._bpm_smooth_buffer))
+                # Final stability check: only change display if shift is ≥1 BPM
+                if not hasattr(self, '_last_stable_hr'):
+                    self._last_stable_hr = smoothed_hr
+                    
+                if abs(smoothed_hr - self._last_stable_hr) >= 1:
+                    self._last_stable_hr = smoothed_hr
                 
-                # Only update if changed by >= 2 bpm (prevents minor fluctuations)
-                try:
-                    if self._last_hr_display is not None and abs(smoothed_bpm - self._last_hr_display) < 2:
-                        return self._last_hr_display
-                    self._last_hr_display = smoothed_bpm
-                except Exception:
-                    self._last_hr_display = smoothed_bpm
-                
-                return smoothed_bpm
+                return self._last_stable_hr
             except Exception as e:
-                print(f"❌ Error in final heart rate calculation: {e}")
+                print(f"❌ Error calculating final BPM: {e}")
                 return 60
         except Exception as e:
             print(f"❌ Critical error in calculate_heart_rate: {e}")
@@ -2475,11 +2564,11 @@ class ECGTestPage(QWidget):
             
             # Apply bandpass filter to enhance R-peaks (0.5-40 Hz)
             from scipy.signal import butter, filtfilt, find_peaks
-            fs = 80.0  # match hardware default so windows scale correctly
-            if hasattr(self, 'sampler') and hasattr(self.sampler, 'sampling_rate') and self.sampler.sampling_rate:
+            fs = 186.5
+            if hasattr(self, 'sampler') and hasattr(self.sampler, 'sampling_rate') and self.sampler.sampling_rate > 10:
                 fs = float(self.sampler.sampling_rate)
-                if fs <= 0:
-                    fs = 80.0
+            elif hasattr(self, 'sampling_rate') and self.sampling_rate > 10:
+                fs = float(self.sampling_rate)
             
             nyquist = fs / 2
             low = 0.5 / nyquist
@@ -2544,7 +2633,7 @@ class ECGTestPage(QWidget):
             return 0  # Fallback to 0 when not computable
         except:
             return 0
-    
+
     def calculate_st_interval(self, lead_data):
         """Calculate ST segment elevation/depression at J+60ms - FRESH calculation"""
         try:
@@ -2650,10 +2739,10 @@ class ECGTestPage(QWidget):
             
             # Get sampling rate
             from scipy.signal import butter, filtfilt, find_peaks
-            fs = 80
-            if hasattr(self, 'sampler') and hasattr(self.sampler, 'sampling_rate') and self.sampler.sampling_rate:
+            fs = 186.5
+            if hasattr(self, 'sampler') and hasattr(self.sampler, 'sampling_rate') and self.sampler.sampling_rate > 10:
                 fs = float(self.sampler.sampling_rate)
-            elif hasattr(self, 'sampling_rate') and self.sampling_rate:
+            elif hasattr(self, 'sampling_rate') and self.sampling_rate > 10:
                 fs = float(self.sampling_rate)
             
             # Filter signal
@@ -2878,67 +2967,50 @@ class ECGTestPage(QWidget):
         """Calculate QRS axis from median beat vectors (GE/Philips standard)."""
         try:
             if len(self.data) < 6:
-                return getattr(self, '_prev_qrs_axis', 0) or 0
-            
-            fs = 500.0
-            if hasattr(self, 'sampler') and hasattr(self.sampler, 'sampling_rate') and self.sampler.sampling_rate:
+                return 0
+            fs = 186.5
+            if hasattr(self, 'sampler') and hasattr(self.sampler, 'sampling_rate') and self.sampler.sampling_rate > 10:
                 fs = float(self.sampler.sampling_rate)
-            
-            lead_i_raw = np.asarray(self.data[0], dtype=float)
-            lead_ii = np.asarray(self.data[1], dtype=float)
-            lead_avf_raw = np.asarray(self.data[5], dtype=float)
-            
-            # 1. R-peak detection on Lead II (Baseline for all alignment)
+            lead_i_raw = self.data[0]
+            lead_avf_raw = self.data[5]
+            lead_ii = self.data[1]
             from scipy.signal import butter, filtfilt
             nyquist = fs / 2
-            b, a = butter(4, [0.5/nyquist, 40/nyquist], btype='band')
+            low = 0.5 / nyquist
+            high = 40 / nyquist
+            b, a = butter(4, [low, high], btype='band')
             filtered_ii = filtfilt(b, a, lead_ii)
-            
             signal_mean = np.mean(filtered_ii)
             signal_std = np.std(filtered_ii)
-            r_peaks, _ = find_peaks(
-                filtered_ii, 
-                height=signal_mean + 0.5 * signal_std, 
-                distance=int(0.25 * fs), 
-                prominence=signal_std * 0.4
-            )
-            
-            if len(r_peaks) < 8:
+            r_peaks, _ = find_peaks(filtered_ii, height=signal_mean + 0.5 * signal_std, distance=int(0.3 * fs), prominence=signal_std * 0.4)
+            if len(r_peaks) < 8: # Enforce 8 beats
                 return getattr(self, '_prev_qrs_axis', 0) or 0
-            
-            # 2. Build Median Beats for I, II, aVF (8-12 clean beats)
             _, median_i = build_median_beat(lead_i_raw, r_peaks, fs, min_beats=8)
-            _, median_ii = build_median_beat(lead_ii, r_peaks, fs, min_beats=8)
             _, median_avf = build_median_beat(lead_avf_raw, r_peaks, fs, min_beats=8)
-            
-            if median_i is None or median_ii is None or median_avf is None:
+            if median_i is None or median_avf is None:
                 return getattr(self, '_prev_qrs_axis', 0) or 0
-                
             r_peak_idx = len(median_i) // 2
-            
-            # 3. Time axis and TP baseline
-            time_axis_i, _ = build_median_beat(lead_i_raw, r_peaks, fs, min_beats=8)
+            # Get Lead II median beat for axis calculation
+            _, median_ii = build_median_beat(lead_ii, r_peaks, fs, min_beats=8)
+            if median_ii is None:
+                return getattr(self, '_prev_qrs_axis', 0) or 0
+            # Get TP baselines for Lead I and aVF (REQUIRED for correct axis calculation)
             r_mid = r_peaks[len(r_peaks) // 2]
             prev_r_idx = r_peaks[len(r_peaks) // 2 - 1] if len(r_peaks) > 1 else None
             tp_baseline_i = get_tp_baseline(lead_i_raw, r_mid, fs, prev_r_peak_idx=prev_r_idx)
             tp_baseline_avf = get_tp_baseline(lead_avf_raw, r_mid, fs, prev_r_peak_idx=prev_r_idx)
             
-            # 4. Axis Calculation (Integral Area Method)
-            axis_deg = calculate_axis_from_median_beat(
-                lead_i_raw, lead_ii, lead_avf_raw, 
-                median_i, median_ii, median_avf, 
-                r_peak_idx, fs, 
-                tp_baseline_i=tp_baseline_i, 
-                tp_baseline_avf=tp_baseline_avf, 
-                time_axis=time_axis_i, 
-                wave_type='QRS', 
-                prev_axis=getattr(self, '_prev_qrs_axis', None)
-            )
+            # Build time axis for median beat
+            time_axis_i, _ = build_median_beat(lead_i_raw, r_peaks, fs, min_beats=8)
+            if time_axis_i is None:
+                return getattr(self, '_prev_qrs_axis', 0) or 0
             
+            # Calculate QRS axis using strict wave windows and net area (integral)
+            axis_deg = calculate_axis_from_median_beat(lead_i_raw, lead_ii, lead_avf_raw, median_i, median_ii, median_avf, r_peak_idx, fs, tp_baseline_i=tp_baseline_i, tp_baseline_avf=tp_baseline_avf, time_axis=time_axis_i, wave_type='QRS', prev_axis=self._prev_qrs_axis)
             self._prev_qrs_axis = axis_deg
             return int(round(axis_deg))
         except Exception as e:
-            print(f"❌ Error calculating QRS axis: {e}")
+            print(f"❌ Error calculating QRS axis from median: {e}")
             return 0
 
     def calculate_p_axis_from_median(self):
@@ -3140,11 +3212,11 @@ class ECGTestPage(QWidget):
     def update_ecg_metrics_display(self, heart_rate, pr_interval, qrs_duration, qrs_axis, st_interval, qt_interval=None, qtc_interval=None):
         """Update the ECG metrics display in the UI (dashboard: BPM, PR, QRS axis, ST, QT/QTc, timer only)"""
         try:
-            # Throttle updates to every 5 seconds to avoid fast flicker
+            # Throttle updates to every 1.0 second to feel responsive but stable
             import time as _time
             if not hasattr(self, '_last_metric_update_ts'):
                 self._last_metric_update_ts = 0.0
-            if _time.time() - self._last_metric_update_ts < 5.0:
+            if _time.time() - self._last_metric_update_ts < 1.0:
                 return
             
             if hasattr(self, 'metric_labels'):
@@ -3224,12 +3296,12 @@ class ECGTestPage(QWidget):
             else:
                 metrics['sampling_rate'] = "--"
             
-            # Reduced debug output - only print every 100 calls to avoid console spam
+            # Reduced debug output - only print every 1000 calls to avoid console spam
             if not hasattr(self, '_metrics_call_count'):
                 self._metrics_call_count = 0
             self._metrics_call_count += 1
-            if self._metrics_call_count % 100 == 0:
-                print(f"🔍 get_current_metrics returning: {metrics}")
+            # if self._metrics_call_count % 1000 == 0:
+            #     print(f"🔍 get_current_metrics returning: {metrics}")
             return metrics
         except Exception as e:
             print(f"Error getting current metrics: {e}")
@@ -3700,13 +3772,18 @@ class ECGTestPage(QWidget):
             data = np.array(lead_ii_data)
             
             # Detect R peaks using Pan-Tompkins algorithm
-            r_peaks = pan_tompkins(data, fs=500)  # 500Hz sampling rate
+            # Use detected sampling rate
+            fs_report = 186.5
+            if hasattr(self, 'sampler') and hasattr(self.sampler, 'sampling_rate') and self.sampler.sampling_rate > 10:
+                fs_report = float(self.sampler.sampling_rate)
+            
+            r_peaks = pan_tompkins(data, fs=fs_report)
             
             if len(r_peaks) < 2:
                 return {}
             
             # Calculate heart rate
-            rr_intervals = np.diff(r_peaks) / 500.0  # Convert to seconds
+            rr_intervals = np.diff(r_peaks) / fs_report  # Convert to seconds
             mean_rr = np.mean(rr_intervals)
             heart_rate = 60 / mean_rr if mean_rr > 0 else 0
             
@@ -6036,8 +6113,12 @@ class ECGTestPage(QWidget):
             seconds_scale = (25.0 / max(1e-6, wave_speed))
             seconds_to_show = baseline_seconds * seconds_scale
             
-            # Use hardware sampling rate (80 Hz)
-            sampling_rate = 500.0
+            # Use hardware sampling rate
+            sampling_rate = 186.5
+            if hasattr(self, 'sampler') and hasattr(self.sampler, 'sampling_rate') and self.sampler.sampling_rate > 10:
+                sampling_rate = float(self.sampler.sampling_rate)
+            elif hasattr(self, 'sampling_rate') and self.sampling_rate > 10:
+                sampling_rate = float(self.sampling_rate)
             samples_to_show = int(sampling_rate * seconds_to_show)
             
             # Return the calculated samples (same as main plots - no buffer size limit)
@@ -6103,12 +6184,12 @@ class ECGTestPage(QWidget):
                     # Optional AC notch filtering (match main 12-lead grid view)
                     filtered_segment = np.array(data_segment, dtype=float)
                     try:
-                        # Prefer hardware sampling rate; fall back to stored sampling_rate or 500 Hz
-                        sampling_rate = 500.0
+                        # Prefer hardware sampling rate; fall back to 186.5 Hz
+                        sampling_rate = 186.5
                         try:
-                            if hasattr(self, "sampler") and hasattr(self.sampler, "sampling_rate") and self.sampler.sampling_rate:
+                            if hasattr(self, "sampler") and hasattr(self.sampler, "sampling_rate") and self.sampler.sampling_rate > 10:
                                 sampling_rate = float(self.sampler.sampling_rate)
-                            elif hasattr(self, "sampling_rate") and self.sampling_rate:
+                            elif hasattr(self, "sampling_rate") and self.sampling_rate > 10:
                                 sampling_rate = float(self.sampling_rate)
                         except Exception:
                             pass
@@ -6796,12 +6877,12 @@ class ECGTestPage(QWidget):
                     # Optional AC notch filtering (match main 12-lead grid view)
                     filtered_segment = np.array(data_segment, dtype=float)
                     try:
-                        sampling_rate = 500.0
+                        sampling_rate = 186.5
                         try:
-                            if hasattr(self, "sampler") and hasattr(self.sampler, "sampling_rate") and self.sampler.sampling_rate:
+                            if hasattr(self, "sampler") and hasattr(self.sampler, "sampling_rate") and self.sampler.sampling_rate > 10:
                                 sampling_rate = float(self.sampler.sampling_rate)
-                            elif hasattr(self, "sampling_rate") and self.sampling_rate:
-                                sampling_rate = float(self.sampling_rate)
+                            elif hasattr(self, "sampling_rate") and self.sampling_rate > 10:
+                                sampling_rate = float(self.sampler.sampling_rate)
                         except Exception:
                             pass
                         
@@ -7131,7 +7212,11 @@ class ECGTestPage(QWidget):
                             scaled_data = self.apply_adaptive_gain(self.data[i], signal_source, gain_factor)
 
                             # Build time axis and apply wave-speed scaling
-                            sampling_rate = 500.0  # Hardware sampling rate
+                            sampling_rate = 186.5
+                            if hasattr(self, 'sampler') and hasattr(self.sampler, 'sampling_rate') and self.sampler.sampling_rate > 10:
+                                sampling_rate = float(self.sampler.sampling_rate)
+                            elif hasattr(self, 'sampling_rate') and self.sampling_rate > 10:
+                                sampling_rate = float(self.sampling_rate)
                             
                             # Calculate how many samples to show based on wave speed
                             # 25 mm/s → 10s window

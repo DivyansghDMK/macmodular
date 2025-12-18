@@ -477,6 +477,77 @@ def detect_p_wave_bounds(median_beat, r_idx, fs, tp_baseline):
         return None, None
 
 
+def measure_pr_from_median_beat(median_beat, time_axis, fs, tp_baseline):
+    """
+    Measure PR interval from median beat: P onset → QRS onset (GE/Philips standard).
+    """
+    try:
+        r_idx = np.argmin(np.abs(time_axis))  # R-peak at 0 ms
+        
+        # Detect P-wave bounds
+        p_onset, p_offset = detect_p_wave_bounds(median_beat, r_idx, fs, tp_baseline)
+        
+        if p_onset is None:
+            return 0
+            
+        # Find QRS onset (same logic as in measure_qt)
+        signal_corrected = median_beat - tp_baseline
+        signal_range = np.max(np.abs(signal_corrected))
+        threshold = max(0.05 * signal_range, np.std(signal_corrected) * 0.1) if signal_range > 0 else 0.05
+        
+        qrs_onset_start = max(0, r_idx - int(60 * fs / 1000))
+        qrs_segment = signal_corrected[qrs_onset_start:r_idx]
+        qrs_deviations = np.where(np.abs(qrs_segment) > threshold * 2.0)[0]
+        qrs_onset_idx = qrs_onset_start + qrs_deviations[0] if len(qrs_deviations) > 0 else qrs_onset_start
+        
+        # PR interval = QRS onset - P onset (in ms)
+        pr_ms = time_axis[qrs_onset_idx] - time_axis[p_onset]
+        
+        if 100 <= pr_ms <= 300:  # Valid clinical PR range
+            return int(round(pr_ms))
+            
+        return 0
+    except:
+        return 0
+
+
+def measure_qrs_duration_from_median_beat(median_beat, time_axis, fs, tp_baseline):
+    """
+    Measure QRS duration from median beat: QRS onset → J-point (GE/Philips standard).
+    """
+    try:
+        r_idx = np.argmin(np.abs(time_axis))  # R-peak at 0 ms
+        
+        # Find QRS onset
+        signal_corrected = median_beat - tp_baseline
+        signal_range = np.max(np.abs(signal_corrected))
+        threshold = max(0.05 * signal_range, np.std(signal_corrected) * 0.1) if signal_range > 0 else 0.05
+        
+        qrs_onset_start = max(0, r_idx - int(60 * fs / 1000))
+        qrs_segment = signal_corrected[qrs_onset_start:r_idx]
+        qrs_deviations = np.where(np.abs(qrs_segment) > threshold * 2.0)[0]
+        qrs_onset_idx = qrs_onset_start + qrs_deviations[0] if len(qrs_deviations) > 0 else qrs_onset_start
+        
+        # Find J-point (end of S-wave)
+        j_start = r_idx + int(20 * fs / 1000)
+        j_end = r_idx + int(80 * fs / 1000)
+        if j_end > len(median_beat):
+            return 0
+            
+        j_segment = signal_corrected[j_start:j_end]
+        j_point_idx = j_start + np.argmin(j_segment)
+        
+        # QRS duration = J-point - QRS onset (in ms)
+        qrs_ms = time_axis[j_point_idx] - time_axis[qrs_onset_idx]
+        
+        if 40 <= qrs_ms <= 200:  # Valid clinical QRS range
+            return int(round(qrs_ms))
+            
+        return 0
+    except:
+        return 0
+
+
 def calculate_axis_from_median_beat(lead_i_raw, lead_ii_raw, lead_avf_raw, median_beat_i, median_beat_ii, median_beat_avf, 
                                      r_peak_idx, fs, tp_baseline_i=None, tp_baseline_avf=None, time_axis=None, 
                                      wave_type='QRS', prev_axis=None, pr_ms=None, adc_i=1200.0, adc_avf=1200.0):
