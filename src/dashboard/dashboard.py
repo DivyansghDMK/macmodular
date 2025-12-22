@@ -1580,17 +1580,21 @@ class Dashboard(QWidget):
 
         This is used as a safety net for high BPM so that values like 209/290/300
         never collapse to half (105/145/150) due to peak-selection quirks.
+        
+        CROSS-PLATFORM: Uses consistent sampling rate detection for Windows/macOS/Linux.
         """
         try:
             from scipy.signal import butter, filtfilt, find_peaks
             import numpy as np
+            import sys
 
             # Need enough samples to estimate BPM
             if ecg_signal is None or len(ecg_signal) < 200:
                 return 0
 
-            # Sampling rate fallback based on hardware (from commit d152fd6)
-            fs = 186.5
+            # CROSS-PLATFORM: Unified sampling rate detection (same as calculate_live_ecg_metrics)
+            # Use 250 Hz as standard fallback (matches ECG test page default)
+            fs = 250.0  # Standard fallback for all platforms
             if sampling_rate and sampling_rate > 10:
                 fs = float(sampling_rate)
             elif hasattr(self, 'ecg_test_page') and self.ecg_test_page:
@@ -1598,8 +1602,20 @@ class Dashboard(QWidget):
                     if hasattr(self.ecg_test_page, 'sampler') and hasattr(self.ecg_test_page.sampler, 'sampling_rate'):
                         if self.ecg_test_page.sampler.sampling_rate > 10:
                             fs = float(self.ecg_test_page.sampler.sampling_rate)
-                except Exception:
-                    pass
+                    elif hasattr(self.ecg_test_page, 'sampling_rate') and self.ecg_test_page.sampling_rate > 10:
+                        fs = float(self.ecg_test_page.sampling_rate)
+                except Exception as e:
+                    # Log on Windows for debugging
+                    if sys.platform.startswith('win') and not hasattr(self, '_sampling_rate_warned'):
+                        print(f"⚠️ Windows: Sampling rate detection failed: {e}, using fallback {fs} Hz")
+                        self._sampling_rate_warned = True
+            
+            # Validate sampling rate (critical for cross-platform accuracy)
+            if fs <= 0 or not np.isfinite(fs):
+                fs = 250.0  # Safe fallback
+                if sys.platform.startswith('win') and not hasattr(self, '_sampling_rate_invalid_warned'):
+                    print(f"⚠️ Windows: Invalid sampling rate detected, using fallback {fs} Hz")
+                    self._sampling_rate_invalid_warned = True
 
             # Bandpass filter 0.5–40 Hz
             nyquist = fs / 2.0
@@ -1687,9 +1703,10 @@ class Dashboard(QWidget):
             if len(ecg_signal) < 200:
                 return {}
             
-            # CRITICAL: Get actual sampling rate from ECG test page
-            # Use same fallback as ECG test page (250 Hz) for consistency
-            fs = 250.0  # Base fallback (matches ECG test page)
+            # CROSS-PLATFORM: Get actual sampling rate from ECG test page
+            # Use 250 Hz as standard fallback (consistent across Windows/macOS/Linux)
+            import sys
+            fs = 250.0  # Standard fallback for all platforms
             if sampling_rate and sampling_rate > 10:
                 fs = float(sampling_rate)
             elif hasattr(self, 'ecg_test_page') and self.ecg_test_page:
@@ -1700,18 +1717,25 @@ class Dashboard(QWidget):
                     elif hasattr(self.ecg_test_page, 'sampling_rate') and self.ecg_test_page.sampling_rate > 10:
                         fs = float(self.ecg_test_page.sampling_rate)
                 except Exception as e:
-                    pass
+                    # Enhanced Windows debugging
+                    if sys.platform.startswith('win') and not hasattr(self, '_sampling_rate_warned'):
+                        print(f"⚠️ Windows: Sampling rate detection failed: {e}, using fallback {fs} Hz")
+                        self._sampling_rate_warned = True
             
-            # Validate sampling rate
+            # Validate sampling rate (critical for cross-platform accuracy)
             if fs <= 0 or not np.isfinite(fs):
                 fs = 250.0  # Safe fallback
+                if sys.platform.startswith('win') and not hasattr(self, '_sampling_rate_invalid_warned'):
+                    print(f"⚠️ Windows: Invalid sampling rate detected, using fallback {fs} Hz")
+                    self._sampling_rate_invalid_warned = True
             
-            # Debug output for Windows troubleshooting (print first few times to help diagnose)
+            # Cross-platform debug output (helpful for diagnosing Windows issues)
             if not hasattr(self, '_bpm_debug_count'):
                 self._bpm_debug_count = 0
             self._bpm_debug_count += 1
-            if self._bpm_debug_count <= 3:  # Print first 3 times
-                print(f"🔍 BPM Calculation - Sampling rate: {fs} Hz, Signal length: {len(ecg_signal)} samples")
+            platform_tag = "Windows" if sys.platform.startswith('win') else "macOS/Linux"
+            if self._bpm_debug_count <= 5:  # Print first 5 times for better Windows debugging
+                print(f"🔍 [{platform_tag}] BPM Calculation - Sampling rate: {fs} Hz, Signal length: {len(ecg_signal)} samples")
             
             # Validate signal
             if not np.isfinite(ecg_signal).all():

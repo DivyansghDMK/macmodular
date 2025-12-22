@@ -1,13 +1,14 @@
 {
-  "timestamp": "2025-12-22 15:33:26",
+  "timestamp": "2025-12-22 16:18:47",
   "findings": [
-    "Rhythm Analysis",
-    "Normal heart rate",
+    "Severe Tachycardia",
     "Prolonged PR interval",
     "Normal QRS duration",
-    "Good heart rate variability"
+    "Low HRV"
   ],
   "recommendations": [
-    "Medical evaluation recommended for AV conduction assessment"
+    "Consult physician, check for arrhythmias",
+    "Medical evaluation recommended for AV conduction assessment",
+    "Ensure adequate rest and stress management"
   ]
 }
