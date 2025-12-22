@@ -1,13 +1,13 @@
 {
-  "timestamp": "2025-12-22 16:18:47",
+  "timestamp": "2025-12-22 17:38:09",
   "findings": [
-    "Severe Tachycardia",
+    "Tachycardia detected",
     "Prolonged PR interval",
     "Normal QRS duration",
     "Low HRV"
   ],
   "recommendations": [
-    "Consult physician, check for arrhythmias",
+    "Monitor symptoms, consider medical evaluation",
     "Medical evaluation recommended for AV conduction assessment",
     "Ensure adequate rest and stress management"
   ]
