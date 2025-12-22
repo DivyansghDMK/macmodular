@@ -73,18 +73,29 @@ LEAD_LABELS = [
 ]
 
 class SamplingRateCalculator:
+    """Cross-platform sampling rate calculator - detects hardware rate (e.g., 500 Hz)"""
     def __init__(self, update_interval_sec=5):
         self.sample_count = 0
         self.last_update_time = time.monotonic()
         self.update_interval = update_interval_sec
         self.sampling_rate = 0
+        import sys
+        self.is_windows = sys.platform.startswith('win')
 
     def add_sample(self):
+        """Add a sample and calculate sampling rate - works identically on Windows/macOS/Linux"""
         self.sample_count += 1
-        current_time = time.monotonic()
+        current_time = time.monotonic()  # Cross-platform monotonic timer
         elapsed = current_time - self.last_update_time
         if elapsed >= self.update_interval:
-            self.sampling_rate = self.sample_count / elapsed
+            # Calculate actual hardware sampling rate (should be ~500 Hz)
+            calculated_rate = self.sample_count / elapsed
+            self.sampling_rate = calculated_rate
+            
+            # Debug output for Windows to verify 500 Hz detection
+            if self.is_windows and calculated_rate > 100:  # Only log if reasonable rate detected
+                print(f"✅ [Windows] Hardware sampling rate detected: {calculated_rate:.1f} Hz ({self.sample_count} samples in {elapsed:.2f}s)")
+            
             self.sample_count = 0
             self.last_update_time = current_time
         return self.sampling_rate
@@ -5200,11 +5211,17 @@ class ECGTestPage(QWidget):
                 else:
                     raise e
             
-            # Use faster timer interval for EXE builds to prevent gaps
-            # Timer interval is more important than timer type for smooth plotting
-            timer_interval = 33  # ~30 FPS for smoother plotting in EXE
-            print(f"[DEBUG] ECGTestPage - Starting timer with {timer_interval}ms interval")
-            # Using default timer type - works fine in EXE with proper interval
+            # CROSS-PLATFORM: Timer interval optimization - ensures 500 Hz data ingestion works on both Windows/macOS
+            # Windows QTimer has ~15ms precision, macOS has ~1ms precision
+            # Use faster interval on Windows to ensure smooth data ingestion at 500 Hz
+            import sys
+            if sys.platform.startswith('win'):
+                timer_interval = 30  # ~33 FPS for Windows (compensates for timer precision, ensures 500 Hz data captured)
+                print(f"[Windows] ECGTestPage - Starting timer with {timer_interval}ms interval (optimized for 500 Hz hardware)")
+            else:
+                timer_interval = 33  # ~30 FPS for macOS/Linux (works fine with 500 Hz hardware)
+                print(f"[macOS/Linux] ECGTestPage - Starting timer with {timer_interval}ms interval")
+            # Using default timer type - works fine with proper interval
             self.timer.start(timer_interval)
             if hasattr(self, '_12to1_timer'):
                 self._12to1_timer.start(100)
@@ -6217,8 +6234,8 @@ class ECGTestPage(QWidget):
             seconds_scale = (25.0 / max(1e-6, wave_speed))
             seconds_to_show = baseline_seconds * seconds_scale
             
-            # Use hardware sampling rate
-            sampling_rate = 186.5
+            # CROSS-PLATFORM: Use 250 Hz standard fallback
+            sampling_rate = 250.0
             if hasattr(self, 'sampler') and hasattr(self.sampler, 'sampling_rate') and self.sampler.sampling_rate > 10:
                 sampling_rate = float(self.sampler.sampling_rate)
             elif hasattr(self, 'sampling_rate') and self.sampling_rate > 10:
@@ -6981,12 +6998,13 @@ class ECGTestPage(QWidget):
                     # Optional AC notch filtering (match main 12-lead grid view)
                     filtered_segment = np.array(data_segment, dtype=float)
                     try:
-                        sampling_rate = 186.5
+                        # CROSS-PLATFORM: Use 250 Hz standard fallback (consistent with dashboard)
+                        sampling_rate = 250.0
                         try:
                             if hasattr(self, "sampler") and hasattr(self.sampler, "sampling_rate") and self.sampler.sampling_rate > 10:
                                 sampling_rate = float(self.sampler.sampling_rate)
                             elif hasattr(self, "sampling_rate") and self.sampling_rate > 10:
-                                sampling_rate = float(self.sampler.sampling_rate)
+                                sampling_rate = float(self.sampling_rate)  # Fixed: was self.sampler.sampling_rate
                         except Exception:
                             pass
                         
@@ -7229,14 +7247,26 @@ class ECGTestPage(QWidget):
                                 print(f"❌ Error updating data buffer {i} ({lead_name}): {e}")
                                 continue
                         
-                        # Update sampling rate counter
+                        # Update sampling rate counter - CRITICAL: Hardware sends at 500 Hz, detect actual rate
+                        # This ensures BPM/PR calculations use correct rate on both Windows and macOS
                         try:
                             if hasattr(self, 'sampler'):
-                                sampling_rate = self.sampler.add_sample()
-                                if sampling_rate > 0 and hasattr(self, 'metric_labels') and 'sampling_rate' in self.metric_labels:
-                                    self.metric_labels['sampling_rate'].setText(f"{sampling_rate:.1f} Hz")
+                                detected_rate = self.sampler.add_sample()
+                                if detected_rate > 0:
+                                    # Use detected hardware rate (should be ~500 Hz) for all calculations
+                                    self.sampling_rate = detected_rate
+                                    # Debug: Log when 500 Hz detected (helps verify Windows detection)
+                                    import sys
+                                    if sys.platform.startswith('win') and 450 <= detected_rate <= 550:
+                                        if not hasattr(self, '_500hz_detected_logged'):
+                                            print(f"✅ [Windows] Hardware 500 Hz detected correctly: {detected_rate:.1f} Hz")
+                                            self._500hz_detected_logged = True
+                                    if hasattr(self, 'metric_labels') and 'sampling_rate' in self.metric_labels:
+                                        self.metric_labels['sampling_rate'].setText(f"{detected_rate:.1f} Hz")
                         except Exception as e:
-                            print(f"❌ Error updating sampling rate: {e}")
+                            import sys
+                            platform_tag = "[Windows]" if sys.platform.startswith('win') else ""
+                            print(f"❌ {platform_tag} Error updating sampling rate: {e}")
                         
                         packets_processed += 1
                         
@@ -7264,11 +7294,21 @@ class ECGTestPage(QWidget):
                                     continue
                             try:
                                 if hasattr(self, 'sampler'):
-                                    sampling_rate = self.sampler.add_sample()
-                                    if sampling_rate > 0 and hasattr(self, 'metric_labels') and 'sampling_rate' in self.metric_labels:
-                                        self.metric_labels['sampling_rate'].setText(f"{sampling_rate:.1f} Hz")
+                                    detected_rate = self.sampler.add_sample()
+                                    if detected_rate > 0:
+                                        # Use detected hardware rate (should be ~500 Hz) for all calculations
+                                        self.sampling_rate = detected_rate
+                                        import sys
+                                        if sys.platform.startswith('win') and 450 <= detected_rate <= 550:
+                                            if not hasattr(self, '_500hz_detected_logged'):
+                                                print(f"✅ [Windows] Hardware 500 Hz detected correctly: {detected_rate:.1f} Hz")
+                                                self._500hz_detected_logged = True
+                                        if hasattr(self, 'metric_labels') and 'sampling_rate' in self.metric_labels:
+                                            self.metric_labels['sampling_rate'].setText(f"{detected_rate:.1f} Hz")
                             except Exception as e:
-                                print(f"❌ Error updating sampling rate: {e}")
+                                import sys
+                                platform_tag = "[Windows]" if sys.platform.startswith('win') else ""
+                                print(f"❌ {platform_tag} Error updating sampling rate: {e}")
                             lines_processed += 1
                         else:
                             break
