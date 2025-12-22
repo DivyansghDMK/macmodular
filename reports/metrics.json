@@ -819,5 +819,2239 @@
       1.752,
       1.167
     ]
+  },
+  {
+    "timestamp": "2025-12-13 09:56:40",
+    "file": "/Users/indresh/Downloads/ECG_Report_20251213_095636.pdf",
+    "HR_bpm": 60,
+    "PR_ms": 160,
+    "QRS_ms": 85,
+    "QT_ms": 360,
+    "QTc_ms": 380,
+    "ST_ms": 0,
+    "RR_ms": 1000,
+    "RV5_plus_SV1_mV": 2.916,
+    "P_QRS_T_mm": [
+      186,
+      3,
+      29
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.756,
+      1.16
+    ]
+  },
+  {
+    "timestamp": "2025-12-13 11:09:05",
+    "file": "/Users/indresh/Downloads/ECG_Report_20251213_110902.pdf",
+    "HR_bpm": 70,
+    "PR_ms": 171,
+    "QRS_ms": 95,
+    "QT_ms": 448,
+    "QTc_ms": 468,
+    "ST_ms": 0,
+    "RR_ms": 857,
+    "RV5_plus_SV1_mV": 1.425,
+    "P_QRS_T_mm": [
+      88,
+      -163,
+      8
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      0.639,
+      0.786
+    ]
+  },
+  {
+    "timestamp": "2025-12-13 11:10:35",
+    "file": "/Users/indresh/Downloads/ECG_Report_20251213_111032.pdf",
+    "HR_bpm": 70,
+    "PR_ms": 130,
+    "QRS_ms": 105,
+    "QT_ms": 455,
+    "QTc_ms": 475,
+    "ST_ms": 0,
+    "RR_ms": 857,
+    "RV5_plus_SV1_mV": 1.428,
+    "P_QRS_T_mm": [
+      140,
+      -167,
+      12
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      0.642,
+      0.786
+    ]
+  },
+  {
+    "timestamp": "2025-12-13 11:11:54",
+    "file": "/Users/indresh/Downloads/ECG_Report_20251213_111151.pdf",
+    "HR_bpm": 70,
+    "PR_ms": 212,
+    "QRS_ms": 82,
+    "QT_ms": 359,
+    "QTc_ms": 379,
+    "ST_ms": 3,
+    "RR_ms": 857,
+    "RV5_plus_SV1_mV": 1.427,
+    "P_QRS_T_mm": [
+      38,
+      -166,
+      10
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      0.641,
+      0.786
+    ]
+  },
+  {
+    "timestamp": "2025-12-13 12:00:24",
+    "file": "/Users/deckmount/Downloads/ECG_Report_20251213_120018.pdf",
+    "HR_bpm": 70,
+    "PR_ms": 139,
+    "QRS_ms": 80,
+    "QT_ms": 360,
+    "QTc_ms": 380,
+    "ST_ms": -3,
+    "RR_ms": 857,
+    "RV5_plus_SV1_mV": 2.577,
+    "P_QRS_T_mm": [
+      54,
+      29,
+      49
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.772,
+      0.805
+    ]
+  },
+  {
+    "timestamp": "2025-12-13 12:34:12",
+    "file": "/Users/deckmount/Downloads/ECG_Report_20251213_123406.pdf",
+    "HR_bpm": 70,
+    "PR_ms": 156,
+    "QRS_ms": 80,
+    "QT_ms": 332,
+    "QTc_ms": 352,
+    "ST_ms": -4,
+    "RR_ms": 857,
+    "RV5_plus_SV1_mV": 2.871,
+    "P_QRS_T_mm": [
+      56,
+      30,
+      49
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.909,
+      0.962
+    ]
+  },
+  {
+    "timestamp": "2025-12-13 12:35:35",
+    "file": "/Users/deckmount/Downloads/ECG_Report_20251213_123531.pdf",
+    "HR_bpm": 70,
+    "PR_ms": 158,
+    "QRS_ms": 99,
+    "QT_ms": 312,
+    "QTc_ms": 332,
+    "ST_ms": 0,
+    "RR_ms": 857,
+    "RV5_plus_SV1_mV": 2.857,
+    "P_QRS_T_mm": [
+      65,
+      29,
+      48
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.837,
+      1.02
+    ]
+  },
+  {
+    "timestamp": "2025-12-13 14:44:09",
+    "file": "/Users/deckmount/Downloads/ECG_Report_20251213_144405.pdf",
+    "HR_bpm": 120,
+    "PR_ms": 179,
+    "QRS_ms": 95,
+    "QT_ms": 453,
+    "QTc_ms": 473,
+    "ST_ms": -2,
+    "RR_ms": 500,
+    "RV5_plus_SV1_mV": 0.004,
+    "P_QRS_T_mm": [
+      199,
+      27,
+      81
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      0.001,
+      0.003
+    ]
+  },
+  {
+    "timestamp": "2025-12-13 14:44:46",
+    "file": "/Users/deckmount/Downloads/ECG_Report_20251213_144442.pdf",
+    "HR_bpm": 120,
+    "PR_ms": 176,
+    "QRS_ms": 79,
+    "QT_ms": 464,
+    "QTc_ms": 484,
+    "ST_ms": -1,
+    "RR_ms": 500,
+    "RV5_plus_SV1_mV": 0.003,
+    "P_QRS_T_mm": [
+      199,
+      29,
+      62
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      0.001,
+      0.002
+    ]
+  },
+  {
+    "timestamp": "2025-12-13 17:13:35",
+    "file": "/Users/deckmount/Downloads/ECG_Report_20251213_171331.pdf",
+    "HR_bpm": 70,
+    "PR_ms": 158,
+    "QRS_ms": 79,
+    "QT_ms": 359,
+    "QTc_ms": 379,
+    "ST_ms": -3,
+    "RR_ms": 857,
+    "RV5_plus_SV1_mV": 2.937,
+    "P_QRS_T_mm": [
+      50,
+      29,
+      50
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.903,
+      1.033
+    ]
+  },
+  {
+    "timestamp": "2025-12-13 17:53:27",
+    "file": "/Users/deckmount/Downloads/ECG_Report_20251213_175319.pdf",
+    "HR_bpm": 70,
+    "PR_ms": 156,
+    "QRS_ms": 81,
+    "QT_ms": 378,
+    "QTc_ms": 398,
+    "ST_ms": -7,
+    "RR_ms": 857,
+    "RV5_plus_SV1_mV": 2.887,
+    "P_QRS_T_mm": [
+      56,
+      30,
+      48
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.889,
+      0.998
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 09:35:23",
+    "file": "/Users/deckmount/Downloads/ECG_Report_20251215_093516.pdf",
+    "HR_bpm": 90,
+    "PR_ms": 160,
+    "QRS_ms": 74,
+    "QT_ms": 470,
+    "QTc_ms": 490,
+    "ST_ms": -2,
+    "RR_ms": 666,
+    "RV5_plus_SV1_mV": 2.875,
+    "P_QRS_T_mm": [
+      84,
+      27,
+      51
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.873,
+      1.001
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 09:37:05",
+    "file": "/Users/deckmount/Downloads/ECG_Report_20251215_093700.pdf",
+    "HR_bpm": 87,
+    "PR_ms": 168,
+    "QRS_ms": 92,
+    "QT_ms": 392,
+    "QTc_ms": 412,
+    "ST_ms": 0,
+    "RR_ms": 689,
+    "RV5_plus_SV1_mV": 2.948,
+    "P_QRS_T_mm": [
+      87,
+      30,
+      50
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.914,
+      1.034
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 11:49:03",
+    "file": "/Users/deckmount/Downloads/as.pdf",
+    "HR_bpm": 66,
+    "PR_ms": 200,
+    "QRS_ms": 96,
+    "QT_ms": 383,
+    "QTc_ms": 403,
+    "ST_ms": -1,
+    "RR_ms": 909,
+    "RV5_plus_SV1_mV": 2.771,
+    "P_QRS_T_mm": [
+      52,
+      29,
+      48
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.898,
+      0.872
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 12:03:00",
+    "file": "/Users/deckmount/Downloads/ECG_Report_20251215_120255.pdf",
+    "HR_bpm": 60,
+    "PR_ms": 180,
+    "QRS_ms": 89,
+    "QT_ms": 311,
+    "QTc_ms": 331,
+    "ST_ms": -2,
+    "RR_ms": 1000,
+    "RV5_plus_SV1_mV": 2.774,
+    "P_QRS_T_mm": [
+      51,
+      28,
+      48
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.931,
+      0.843
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 12:05:02",
+    "file": "/Users/deckmount/Downloads/a.pdf",
+    "HR_bpm": 60,
+    "PR_ms": 182,
+    "QRS_ms": 90,
+    "QT_ms": 311,
+    "QTc_ms": 331,
+    "ST_ms": -2,
+    "RR_ms": 1000,
+    "RV5_plus_SV1_mV": 2.692,
+    "P_QRS_T_mm": [
+      116,
+      97,
+      55
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.92,
+      0.772
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 12:06:10",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251215_120607.pdf",
+    "HR_bpm": 169,
+    "PR_ms": 184,
+    "QRS_ms": 89,
+    "QT_ms": 353,
+    "QTc_ms": 373,
+    "ST_ms": -1,
+    "RR_ms": 355,
+    "RV5_plus_SV1_mV": 2.899,
+    "P_QRS_T_mm": [
+      207,
+      30,
+      78
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.926,
+      0.974
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 12:06:26",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251215_120622.pdf",
+    "HR_bpm": 170,
+    "PR_ms": 126,
+    "QRS_ms": 87,
+    "QT_ms": 434,
+    "QTc_ms": 454,
+    "ST_ms": 1,
+    "RR_ms": 352,
+    "RV5_plus_SV1_mV": 2.94,
+    "P_QRS_T_mm": [
+      183,
+      32,
+      64
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.93,
+      1.01
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 12:07:19",
+    "file": "/Users/deckmount/Downloads/div.pdf",
+    "HR_bpm": 180,
+    "PR_ms": 127,
+    "QRS_ms": 80,
+    "QT_ms": 431,
+    "QTc_ms": 451,
+    "ST_ms": -2,
+    "RR_ms": 333,
+    "RV5_plus_SV1_mV": 2.498,
+    "P_QRS_T_mm": [
+      119,
+      34,
+      174
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.833,
+      0.666
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 12:14:51",
+    "file": "/Users/deckmount/Downloads/qw.pdf",
+    "HR_bpm": 180,
+    "PR_ms": 127,
+    "QRS_ms": 99,
+    "QT_ms": 466,
+    "QTc_ms": 486,
+    "ST_ms": -1,
+    "RR_ms": 333,
+    "RV5_plus_SV1_mV": 2.482,
+    "P_QRS_T_mm": [
+      84,
+      34,
+      107
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.818,
+      0.664
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 12:19:02",
+    "file": "/Users/deckmount/Downloads/qwertyu.pdf",
+    "HR_bpm": 180,
+    "PR_ms": 126,
+    "QRS_ms": 79,
+    "QT_ms": 448,
+    "QTc_ms": 468,
+    "ST_ms": 0,
+    "RR_ms": 333,
+    "RV5_plus_SV1_mV": 2.496,
+    "P_QRS_T_mm": [
+      100,
+      34,
+      113
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.831,
+      0.665
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 12:23:31",
+    "file": "/Users/deckmount/Downloads/assssw.pdf",
+    "HR_bpm": 80,
+    "PR_ms": 132,
+    "QRS_ms": 89,
+    "QT_ms": 479,
+    "QTc_ms": 499,
+    "ST_ms": -2,
+    "RR_ms": 750,
+    "RV5_plus_SV1_mV": 2.962,
+    "P_QRS_T_mm": [
+      63,
+      28,
+      50
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.924,
+      1.039
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 12:23:49",
+    "file": "/Users/deckmount/Downloads/werty.pdf",
+    "HR_bpm": 75,
+    "PR_ms": 196,
+    "QRS_ms": 91,
+    "QT_ms": 493,
+    "QTc_ms": 513,
+    "ST_ms": -2,
+    "RR_ms": 800,
+    "RV5_plus_SV1_mV": 3.038,
+    "P_QRS_T_mm": [
+      60,
+      27,
+      49
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.939,
+      1.099
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 12:28:30",
+    "file": "/Users/deckmount/Downloads/assasa.pdf",
+    "HR_bpm": 80,
+    "PR_ms": 183,
+    "QRS_ms": 95,
+    "QT_ms": 405,
+    "QTc_ms": 425,
+    "ST_ms": -2,
+    "RR_ms": 750,
+    "RV5_plus_SV1_mV": 2.961,
+    "P_QRS_T_mm": [
+      64,
+      28,
+      49
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.925,
+      1.036
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 12:37:43",
+    "file": "/Users/deckmount/Downloads/aqw.pdf",
+    "HR_bpm": 80,
+    "PR_ms": 176,
+    "QRS_ms": 88,
+    "QT_ms": 457,
+    "QTc_ms": 477,
+    "ST_ms": -2,
+    "RR_ms": 750,
+    "RV5_plus_SV1_mV": 2.81,
+    "P_QRS_T_mm": [
+      67,
+      28,
+      48
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.865,
+      0.946
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 13:34:52",
+    "file": "/Users/deckmount/Downloads/priyam.pdf",
+    "HR_bpm": 80,
+    "PR_ms": 176,
+    "QRS_ms": 83,
+    "QT_ms": 307,
+    "QTc_ms": 327,
+    "ST_ms": -2,
+    "RR_ms": 750,
+    "RV5_plus_SV1_mV": 2.952,
+    "P_QRS_T_mm": [
+      62,
+      28,
+      50
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.929,
+      1.023
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 13:47:01",
+    "file": "/Users/deckmount/Downloads/qwewewew.pdf",
+    "HR_bpm": 72,
+    "PR_ms": 193,
+    "QRS_ms": 97,
+    "QT_ms": 460,
+    "QTc_ms": 480,
+    "ST_ms": -3,
+    "RR_ms": 833,
+    "RV5_plus_SV1_mV": 2.714,
+    "P_QRS_T_mm": [
+      72,
+      28,
+      49
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.905,
+      0.809
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 13:47:18",
+    "file": "/Users/deckmount/Downloads/asdfghjkl.pdf",
+    "HR_bpm": 80,
+    "PR_ms": 174,
+    "QRS_ms": 88,
+    "QT_ms": 405,
+    "QTc_ms": 425,
+    "ST_ms": -1,
+    "RR_ms": 750,
+    "RV5_plus_SV1_mV": 2.921,
+    "P_QRS_T_mm": [
+      69,
+      27,
+      49
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.924,
+      0.997
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 14:03:18",
+    "file": "/Users/deckmount/Downloads/asssa.pdf",
+    "HR_bpm": 69,
+    "PR_ms": 207,
+    "QRS_ms": 105,
+    "QT_ms": 511,
+    "QTc_ms": 531,
+    "ST_ms": 13,
+    "RR_ms": 869,
+    "RV5_plus_SV1_mV": 2.912,
+    "P_QRS_T_mm": [
+      62,
+      29,
+      48
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.95,
+      0.962
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 14:03:39",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251215_140336.pdf",
+    "HR_bpm": 80,
+    "PR_ms": 178,
+    "QRS_ms": 78,
+    "QT_ms": 417,
+    "QTc_ms": 437,
+    "ST_ms": 0,
+    "RR_ms": 750,
+    "RV5_plus_SV1_mV": 2.941,
+    "P_QRS_T_mm": [
+      62,
+      29,
+      50
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.93,
+      1.012
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 14:05:47",
+    "file": "/Users/deckmount/Downloads/dfgh.pdf",
+    "HR_bpm": 40,
+    "PR_ms": 150,
+    "QRS_ms": 176,
+    "QT_ms": 510,
+    "QTc_ms": 530,
+    "ST_ms": 0,
+    "RR_ms": 1500,
+    "RV5_plus_SV1_mV": 3.483,
+    "P_QRS_T_mm": [
+      219,
+      35,
+      160
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      2.022,
+      1.461
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 14:07:09",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251215_140706.pdf",
+    "HR_bpm": 71,
+    "PR_ms": 206,
+    "QRS_ms": 89,
+    "QT_ms": 468,
+    "QTc_ms": 488,
+    "ST_ms": -7,
+    "RR_ms": 845,
+    "RV5_plus_SV1_mV": 2.775,
+    "P_QRS_T_mm": [
+      54,
+      28,
+      48
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.94,
+      0.834
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 14:09:14",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251215_140910.pdf",
+    "HR_bpm": 80,
+    "PR_ms": 176,
+    "QRS_ms": 78,
+    "QT_ms": 384,
+    "QTc_ms": 404,
+    "ST_ms": -2,
+    "RR_ms": 750,
+    "RV5_plus_SV1_mV": 3.061,
+    "P_QRS_T_mm": [
+      53,
+      20,
+      46
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.952,
+      1.109
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 14:10:50",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251215_141047.pdf",
+    "HR_bpm": 60,
+    "PR_ms": 177,
+    "QRS_ms": 85,
+    "QT_ms": 310,
+    "QTc_ms": 330,
+    "ST_ms": -2,
+    "RR_ms": 1000,
+    "RV5_plus_SV1_mV": 2.934,
+    "P_QRS_T_mm": [
+      49,
+      30,
+      48
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.92,
+      1.014
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 14:39:17",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251215_143914.pdf",
+    "HR_bpm": 57,
+    "PR_ms": 191,
+    "QRS_ms": 102,
+    "QT_ms": 344,
+    "QTc_ms": 364,
+    "ST_ms": -2,
+    "RR_ms": 1052,
+    "RV5_plus_SV1_mV": 1.973,
+    "P_QRS_T_mm": [
+      50,
+      28,
+      48
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.928,
+      0.045
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 14:40:49",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251215_144046.pdf",
+    "HR_bpm": 60,
+    "PR_ms": 181,
+    "QRS_ms": 92,
+    "QT_ms": 311,
+    "QTc_ms": 331,
+    "ST_ms": -2,
+    "RR_ms": 1000,
+    "RV5_plus_SV1_mV": 1.982,
+    "P_QRS_T_mm": [
+      49,
+      29,
+      47
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.919,
+      0.063
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 14:45:00",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251215_144458.pdf",
+    "HR_bpm": 60,
+    "PR_ms": 178,
+    "QRS_ms": 88,
+    "QT_ms": 358,
+    "QTc_ms": 378,
+    "ST_ms": -10,
+    "RR_ms": 1000,
+    "RV5_plus_SV1_mV": 2.197,
+    "P_QRS_T_mm": [
+      51,
+      28,
+      48
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.922,
+      0.274
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 14:46:52",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251215_144650.pdf",
+    "HR_bpm": 60,
+    "PR_ms": 180,
+    "QRS_ms": 92,
+    "QT_ms": 311,
+    "QTc_ms": 331,
+    "ST_ms": -2,
+    "RR_ms": 1000,
+    "RV5_plus_SV1_mV": 2.937,
+    "P_QRS_T_mm": [
+      50,
+      27,
+      48
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.923,
+      1.014
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 15:24:28",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251215_152426.pdf",
+    "HR_bpm": 60,
+    "PR_ms": 190,
+    "QRS_ms": 90,
+    "QT_ms": 408,
+    "QTc_ms": 428,
+    "ST_ms": -2,
+    "RR_ms": 1000,
+    "RV5_plus_SV1_mV": 2.684,
+    "P_QRS_T_mm": [
+      39,
+      36,
+      68
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.915,
+      0.768
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 15:28:59",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251215_152856.pdf",
+    "HR_bpm": 60,
+    "PR_ms": 189,
+    "QRS_ms": 92,
+    "QT_ms": 371,
+    "QTc_ms": 391,
+    "ST_ms": -2,
+    "RR_ms": 1000,
+    "RV5_plus_SV1_mV": 1.901,
+    "P_QRS_T_mm": [
+      47,
+      31,
+      50
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.892,
+      0.009
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 15:40:36",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251215_154032.pdf",
+    "HR_bpm": 75,
+    "PR_ms": 148,
+    "QRS_ms": 92,
+    "QT_ms": 249,
+    "QTc_ms": 269,
+    "ST_ms": -4,
+    "RR_ms": 800,
+    "RV5_plus_SV1_mV": 1.74,
+    "P_QRS_T_mm": [
+      57,
+      28,
+      52
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.735,
+      0.005
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 16:03:41",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251215_160339.pdf",
+    "HR_bpm": 80,
+    "PR_ms": 176,
+    "QRS_ms": 95,
+    "QT_ms": 383,
+    "QTc_ms": 403,
+    "ST_ms": -2,
+    "RR_ms": 750,
+    "RV5_plus_SV1_mV": 2.97,
+    "P_QRS_T_mm": [
+      67,
+      29,
+      50
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.934,
+      1.035
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 16:12:07",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/HRV_Report_20251215_161205.pdf",
+    "HR_bpm": 55,
+    "PR_ms": 176,
+    "QRS_ms": 95,
+    "QT_ms": 383,
+    "QTc_ms": 403,
+    "ST_ms": -2,
+    "RR_ms": 1090,
+    "HRV_SDNN_ms": 365.3704179641311,
+    "HRV_RMSSD_ms": 632.8825664032332,
+    "HRV_NN50": 385,
+    "HRV_pNN50": 99.74093264248705,
+    "HRV_SDANN_ms": 185.4018599299533,
+    "Original_HR_bpm": 80
+  },
+  {
+    "timestamp": "2025-12-15 16:13:57",
+    "file": "/Users/deckmount/Downloads/qwee.pdf",
+    "HR_bpm": 85,
+    "PR_ms": 176,
+    "QRS_ms": 95,
+    "QT_ms": 383,
+    "QTc_ms": 403,
+    "ST_ms": -2,
+    "RR_ms": 705,
+    "HRV_SDNN_ms": 369.3594214612946,
+    "HRV_RMSSD_ms": 636.4715233221358,
+    "HRV_NN50": 14,
+    "HRV_pNN50": 93.33333333333333,
+    "HRV_SDANN_ms": 1.066666666666697,
+    "Original_HR_bpm": 55
+  },
+  {
+    "timestamp": "2025-12-15 16:36:27",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251215_163624.pdf",
+    "HR_bpm": 72,
+    "PR_ms": 195,
+    "QRS_ms": 91,
+    "QT_ms": 474,
+    "QTc_ms": 494,
+    "ST_ms": -1,
+    "RR_ms": 833,
+    "RV5_plus_SV1_mV": 2.978,
+    "P_QRS_T_mm": [
+      53,
+      20,
+      47
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.957,
+      1.022
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 16:36:48",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251215_163646.pdf",
+    "HR_bpm": 79,
+    "PR_ms": 176,
+    "QRS_ms": 76,
+    "QT_ms": 353,
+    "QTc_ms": 373,
+    "ST_ms": -2,
+    "RR_ms": 759,
+    "RV5_plus_SV1_mV": 2.958,
+    "P_QRS_T_mm": [
+      68,
+      28,
+      50
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.937,
+      1.021
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 16:42:22",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251215_164220.pdf",
+    "HR_bpm": 80,
+    "PR_ms": 178,
+    "QRS_ms": 74,
+    "QT_ms": 303,
+    "QTc_ms": 323,
+    "ST_ms": -2,
+    "RR_ms": 750,
+    "RV5_plus_SV1_mV": 0.923,
+    "P_QRS_T_mm": [
+      66,
+      28,
+      49
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.937,
+      -1.014
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 16:45:19",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251215_164517.pdf",
+    "HR_bpm": 83,
+    "PR_ms": 175,
+    "QRS_ms": 83,
+    "QT_ms": 345,
+    "QTc_ms": 365,
+    "ST_ms": -3,
+    "RR_ms": 722,
+    "RV5_plus_SV1_mV": 0.941,
+    "P_QRS_T_mm": [
+      68,
+      28,
+      50
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.932,
+      -0.991
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 16:45:38",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251215_164536.pdf",
+    "HR_bpm": 80,
+    "PR_ms": 178,
+    "QRS_ms": 75,
+    "QT_ms": 421,
+    "QTc_ms": 441,
+    "ST_ms": -2,
+    "RR_ms": 750,
+    "RV5_plus_SV1_mV": 0.859,
+    "P_QRS_T_mm": [
+      62,
+      29,
+      48
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.951,
+      -1.091
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 17:05:49",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251215_170547.pdf",
+    "HR_bpm": 80,
+    "PR_ms": 186,
+    "QRS_ms": 78,
+    "QT_ms": 372,
+    "QTc_ms": 392,
+    "ST_ms": -5,
+    "RR_ms": 750,
+    "RV5_plus_SV1_mV": 0.921,
+    "P_QRS_T_mm": [
+      64,
+      28,
+      49
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.939,
+      -1.018
+    ]
+  },
+  {
+    "timestamp": "2025-12-15 17:26:56",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251215_172654.pdf",
+    "HR_bpm": 80,
+    "PR_ms": 180,
+    "QRS_ms": 76,
+    "QT_ms": 258,
+    "QTc_ms": 278,
+    "ST_ms": 13,
+    "RR_ms": 750,
+    "RV5_plus_SV1_mV": 0.903,
+    "P_QRS_T_mm": [
+      63,
+      28,
+      48
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.958,
+      -1.055
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 10:01:22",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_100117.pdf",
+    "HR_bpm": 80,
+    "PR_ms": 178,
+    "QRS_ms": 95,
+    "QT_ms": 382,
+    "QTc_ms": 402,
+    "ST_ms": -2,
+    "RR_ms": 750,
+    "RV5_plus_SV1_mV": 0.673,
+    "P_QRS_T_mm": [
+      67,
+      29,
+      50
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.341,
+      -0.668
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 11:02:37",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_110234.pdf",
+    "HR_bpm": 80,
+    "PR_ms": 174,
+    "QRS_ms": 82,
+    "QT_ms": 307,
+    "QTc_ms": 327,
+    "ST_ms": -1,
+    "RR_ms": 750,
+    "RV5_plus_SV1_mV": 0.66,
+    "P_QRS_T_mm": [
+      64,
+      29,
+      50
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.327,
+      -0.667
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 11:06:33",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_110630.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 171,
+    "QRS_ms": 73,
+    "QT_ms": 452,
+    "QTc_ms": 472,
+    "ST_ms": -1,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 0.671,
+    "P_QRS_T_mm": [
+      127,
+      29,
+      53
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.334,
+      -0.663
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 11:46:24",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_114622.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 171,
+    "QRS_ms": 80,
+    "QT_ms": 488,
+    "QTc_ms": 508,
+    "ST_ms": -2,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 0.669,
+    "P_QRS_T_mm": [
+      134,
+      29,
+      54
+    ],
+    "QTCF": 0.049,
+    "RV5_SV1_mV": [
+      1.329,
+      -0.66
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 14:22:07",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_142204.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 171,
+    "QRS_ms": 80,
+    "QT_ms": 411,
+    "QTc_ms": 431,
+    "ST_ms": 11,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 0.671,
+    "P_QRS_T_mm": [
+      173,
+      28,
+      54
+    ],
+    "QTCF": 487.3,
+    "RV5_SV1_mV": [
+      1.329,
+      -0.658
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 15:28:14",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_152812.pdf",
+    "HR_bpm": 120,
+    "PR_ms": 174,
+    "QRS_ms": 70,
+    "QT_ms": 444,
+    "QTc_ms": 464,
+    "ST_ms": -2,
+    "RR_ms": 500,
+    "RV5_plus_SV1_mV": 0.233,
+    "P_QRS_T_mm": [
+      216,
+      34,
+      48
+    ],
+    "QTCF": 526.4,
+    "RV5_SV1_mV": [
+      0.825,
+      -0.592
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 15:29:46",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_152944.pdf",
+    "HR_bpm": 120,
+    "PR_ms": 177,
+    "QRS_ms": 79,
+    "QT_ms": 467,
+    "QTc_ms": 487,
+    "ST_ms": -2,
+    "RR_ms": 500,
+    "RV5_plus_SV1_mV": 0.188,
+    "P_QRS_T_mm": [
+      196,
+      28,
+      54
+    ],
+    "QTCF": 588.4,
+    "RV5_SV1_mV": [
+      0.805,
+      -0.617
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 16:40:13",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_164011.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 174,
+    "QRS_ms": 80,
+    "QT_ms": 323,
+    "QTc_ms": 343,
+    "ST_ms": 10,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 0.676,
+    "P_QRS_T_mm": [
+      132,
+      29,
+      51
+    ],
+    "QTCF": 407.0,
+    "RV5_SV1_mV": [
+      1.335,
+      -0.66
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 16:46:11",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_164610.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 170,
+    "QRS_ms": 84,
+    "QT_ms": 480,
+    "QTc_ms": 500,
+    "ST_ms": -2,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 0.674,
+    "P_QRS_T_mm": [
+      122,
+      28,
+      53
+    ],
+    "QTCF": 569.1,
+    "RV5_SV1_mV": [
+      1.333,
+      -0.659
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 16:47:32",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_164730.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 170,
+    "QRS_ms": 90,
+    "QT_ms": 495,
+    "QTc_ms": 515,
+    "ST_ms": -1,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 0.679,
+    "P_QRS_T_mm": [
+      151,
+      29,
+      54
+    ],
+    "QTCF": 586.9,
+    "RV5_SV1_mV": [
+      1.316,
+      -0.637
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 16:57:55",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_165753.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 172,
+    "QRS_ms": 82,
+    "QT_ms": 330,
+    "QTc_ms": 350,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 0.673,
+    "P_QRS_T_mm": [
+      137,
+      29,
+      53
+    ],
+    "QTCF": 391.3,
+    "RV5_SV1_mV": [
+      1.332,
+      -0.659
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 17:05:23",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_170521.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 166,
+    "QRS_ms": 58,
+    "QT_ms": 274,
+    "QTc_ms": 294,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 0.677,
+    "P_QRS_T_mm": [
+      121,
+      29,
+      52
+    ],
+    "QTCF": 324.9,
+    "RV5_SV1_mV": [
+      1.333,
+      -0.656
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 17:09:29",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_170927.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 166,
+    "QRS_ms": 56,
+    "QT_ms": 274,
+    "QTc_ms": 294,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 0.674,
+    "P_QRS_T_mm": [
+      135,
+      28,
+      53
+    ],
+    "QTCF": 324.9,
+    "RV5_SV1_mV": [
+      1.332,
+      -0.658
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 17:11:06",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_171103.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 164,
+    "QRS_ms": 56,
+    "QT_ms": 274,
+    "QTc_ms": 294,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 0.672,
+    "P_QRS_T_mm": [
+      102,
+      29,
+      51
+    ],
+    "QTCF": 324.9,
+    "RV5_SV1_mV": [
+      1.329,
+      -0.656
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 17:19:11",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_171910.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 150,
+    "QRS_ms": 58,
+    "QT_ms": 276,
+    "QTc_ms": 296,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 0.669,
+    "P_QRS_T_mm": [
+      123,
+      29,
+      53
+    ],
+    "QTCF": 327.2,
+    "RV5_SV1_mV": [
+      1.32,
+      -0.651
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 17:19:32",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_171931.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 166,
+    "QRS_ms": 58,
+    "QT_ms": 274,
+    "QTc_ms": 294,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 0.669,
+    "P_QRS_T_mm": [
+      150,
+      29,
+      52
+    ],
+    "QTCF": 324.9,
+    "RV5_SV1_mV": [
+      1.321,
+      -0.652
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 17:22:49",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_172247.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 166,
+    "QRS_ms": 58,
+    "QT_ms": 270,
+    "QTc_ms": 290,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 0.618,
+    "P_QRS_T_mm": [
+      299,
+      81,
+      73
+    ],
+    "QTCF": 320.1,
+    "RV5_SV1_mV": [
+      1.043,
+      -0.425
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 17:32:33",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_173230.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 150,
+    "QRS_ms": 58,
+    "QT_ms": 272,
+    "QTc_ms": 292,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 1.974,
+    "P_QRS_T_mm": [
+      143,
+      27,
+      53
+    ],
+    "QTCF": 322.5,
+    "RV5_SV1_mV": [
+      1.323,
+      -0.651
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 17:37:38",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_173736.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 150,
+    "QRS_ms": 58,
+    "QT_ms": 272,
+    "QTc_ms": 292,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 1.982,
+    "P_QRS_T_mm": [
+      121,
+      28,
+      55
+    ],
+    "QTCF": 322.5,
+    "RV5_SV1_mV": [
+      1.326,
+      -0.656
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 17:38:01",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_173759.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 150,
+    "QRS_ms": 60,
+    "QT_ms": 274,
+    "QTc_ms": 294,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 1.984,
+    "P_QRS_T_mm": [
+      153,
+      25,
+      55
+    ],
+    "QTCF": 324.9,
+    "RV5_SV1_mV": [
+      1.327,
+      -0.657
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 17:43:32",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_174330.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 144,
+    "QRS_ms": 58,
+    "QT_ms": 272,
+    "QTc_ms": 292,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 1.98,
+    "P_QRS_T_mm": [
+      111,
+      28,
+      52
+    ],
+    "QTCF": 322.5,
+    "RV5_SV1_mV": [
+      1.327,
+      -0.653
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 17:48:44",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_174842.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 146,
+    "QRS_ms": 58,
+    "QT_ms": 272,
+    "QTc_ms": 292,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 1.984,
+    "P_QRS_T_mm": [
+      101,
+      29,
+      50
+    ],
+    "QTCF": 322.5,
+    "RV5_SV1_mV": [
+      1.328,
+      -0.656
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 17:54:14",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_175412.pdf",
+    "HR_bpm": 89,
+    "PR_ms": 163,
+    "QRS_ms": 60,
+    "QT_ms": 300,
+    "QTc_ms": 320,
+    "ST_ms": 0,
+    "RR_ms": 674,
+    "RV5_plus_SV1_mV": 1.982,
+    "P_QRS_T_mm": [
+      84,
+      28,
+      51
+    ],
+    "QTCF": 355.7,
+    "RV5_SV1_mV": [
+      1.327,
+      -0.655
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 17:54:32",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_175430.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 146,
+    "QRS_ms": 58,
+    "QT_ms": 272,
+    "QTc_ms": 292,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 1.983,
+    "P_QRS_T_mm": [
+      143,
+      28,
+      53
+    ],
+    "QTCF": 310.2,
+    "RV5_SV1_mV": [
+      1.329,
+      -0.654
+    ]
+  },
+  {
+    "timestamp": "2025-12-17 17:59:14",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251217_175912.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 144,
+    "QRS_ms": 58,
+    "QT_ms": 272,
+    "QTc_ms": 292,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 1.984,
+    "P_QRS_T_mm": [
+      132,
+      28,
+      53
+    ],
+    "QTCF": 322.5,
+    "RV5_SV1_mV": [
+      1.327,
+      -0.657
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 09:49:06",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_094904.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 165,
+    "QRS_ms": 60,
+    "QT_ms": 305,
+    "QTc_ms": 325,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 2.015,
+    "P_QRS_T_mm": [
+      86,
+      28,
+      51
+    ],
+    "QTCF": 361.6,
+    "RV5_SV1_mV": [
+      1.346,
+      -0.669
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 09:50:12",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_095010.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 144,
+    "QRS_ms": 58,
+    "QT_ms": 272,
+    "QTc_ms": 292,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 2.006,
+    "P_QRS_T_mm": [
+      99,
+      30,
+      50
+    ],
+    "QTCF": 322.5,
+    "RV5_SV1_mV": [
+      1.341,
+      -0.665
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 09:53:47",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_095345.pdf",
+    "HR_bpm": 15,
+    "PR_ms": 210,
+    "QRS_ms": 60,
+    "QT_ms": 506,
+    "QTc_ms": 526,
+    "ST_ms": 0,
+    "RR_ms": 4000,
+    "RV5_plus_SV1_mV": 1.931,
+    "P_QRS_T_mm": [
+      150,
+      29,
+      50
+    ],
+    "QTCF": 599.9,
+    "RV5_SV1_mV": [
+      1.292,
+      -0.639
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 10:00:22",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_100020.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 144,
+    "QRS_ms": 60,
+    "QT_ms": 272,
+    "QTc_ms": 292,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 1.982,
+    "P_QRS_T_mm": [
+      135,
+      29,
+      54
+    ],
+    "QTCF": 171.3,
+    "RV5_SV1_mV": [
+      1.326,
+      -0.656
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 10:05:51",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_100549.pdf",
+    "HR_bpm": 88,
+    "PR_ms": 167,
+    "QRS_ms": 61,
+    "QT_ms": 310,
+    "QTc_ms": 330,
+    "ST_ms": 0,
+    "RR_ms": 681,
+    "RV5_plus_SV1_mV": 1.983,
+    "P_QRS_T_mm": [
+      95,
+      28,
+      51
+    ],
+    "QTCF": 367.5,
+    "RV5_SV1_mV": [
+      1.322,
+      -0.662
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 10:06:05",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_100601.pdf",
+    "HR_bpm": 99,
+    "PR_ms": 148,
+    "QRS_ms": 59,
+    "QT_ms": 275,
+    "QTc_ms": 295,
+    "ST_ms": 0,
+    "RR_ms": 606,
+    "RV5_plus_SV1_mV": 1.985,
+    "P_QRS_T_mm": [
+      124,
+      29,
+      52
+    ],
+    "QTCF": 312.6,
+    "RV5_SV1_mV": [
+      1.325,
+      -0.66
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 10:06:22",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_100620.pdf",
+    "HR_bpm": 93,
+    "PR_ms": 157,
+    "QRS_ms": 60,
+    "QT_ms": 294,
+    "QTc_ms": 314,
+    "ST_ms": 0,
+    "RR_ms": 645,
+    "RV5_plus_SV1_mV": 1.983,
+    "P_QRS_T_mm": [
+      91,
+      28,
+      52
+    ],
+    "QTCF": 347.4,
+    "RV5_SV1_mV": [
+      1.324,
+      -0.659
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 10:06:44",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_100642.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 144,
+    "QRS_ms": 58,
+    "QT_ms": 272,
+    "QTc_ms": 292,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 1.986,
+    "P_QRS_T_mm": [
+      137,
+      28,
+      52
+    ],
+    "QTCF": 314.8,
+    "RV5_SV1_mV": [
+      1.328,
+      -0.658
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 10:12:22",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_101220.pdf",
+    "HR_bpm": 99,
+    "PR_ms": 146,
+    "QRS_ms": 58,
+    "QT_ms": 272,
+    "QTc_ms": 292,
+    "ST_ms": 0,
+    "RR_ms": 606,
+    "RV5_plus_SV1_mV": 1.988,
+    "P_QRS_T_mm": [
+      136,
+      28,
+      54
+    ],
+    "QTCF": 322.5,
+    "RV5_SV1_mV": [
+      1.328,
+      -0.66
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 10:17:28",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_101725.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 146,
+    "QRS_ms": 58,
+    "QT_ms": 274,
+    "QTc_ms": 294,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 1.983,
+    "P_QRS_T_mm": [
+      139,
+      28,
+      53
+    ],
+    "QTCF": 323.8,
+    "RV5_SV1_mV": [
+      1.326,
+      -0.658
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 10:17:48",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_101744.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 146,
+    "QRS_ms": 58,
+    "QT_ms": 274,
+    "QTc_ms": 294,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 1.987,
+    "P_QRS_T_mm": [
+      103,
+      28,
+      52
+    ],
+    "QTCF": 324.9,
+    "RV5_SV1_mV": [
+      1.326,
+      -0.661
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 10:18:04",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_101802.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 146,
+    "QRS_ms": 58,
+    "QT_ms": 272,
+    "QTc_ms": 292,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 1.992,
+    "P_QRS_T_mm": [
+      134,
+      29,
+      52
+    ],
+    "QTCF": 322.5,
+    "RV5_SV1_mV": [
+      1.33,
+      -0.661
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 10:24:27",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_102425.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 146,
+    "QRS_ms": 58,
+    "QT_ms": 272,
+    "QTc_ms": 292,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 1.984,
+    "P_QRS_T_mm": [
+      132,
+      29,
+      54
+    ],
+    "QTCF": 322.5,
+    "RV5_SV1_mV": [
+      1.326,
+      -0.658
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 10:26:30",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_102628.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 146,
+    "QRS_ms": 58,
+    "QT_ms": 274,
+    "QTc_ms": 294,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 1.984,
+    "P_QRS_T_mm": [
+      134,
+      29,
+      53
+    ],
+    "QTCF": 324.9,
+    "RV5_SV1_mV": [
+      1.326,
+      -0.659
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 10:29:21",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_102918.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 144,
+    "QRS_ms": 60,
+    "QT_ms": 274,
+    "QTc_ms": 294,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 1.988,
+    "P_QRS_T_mm": [
+      118,
+      29,
+      52
+    ],
+    "QTCF": 324.9,
+    "RV5_SV1_mV": [
+      1.328,
+      -0.66
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 10:31:20",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_103118.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 146,
+    "QRS_ms": 58,
+    "QT_ms": 272,
+    "QTc_ms": 292,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 1.992,
+    "P_QRS_T_mm": [
+      137,
+      29,
+      53
+    ],
+    "QTCF": 322.5,
+    "RV5_SV1_mV": [
+      1.33,
+      -0.663
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 10:32:11",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_103209.pdf",
+    "HR_bpm": 120,
+    "PR_ms": 210,
+    "QRS_ms": 58,
+    "QT_ms": 538,
+    "QTc_ms": 558,
+    "ST_ms": 0,
+    "RR_ms": 500,
+    "RV5_plus_SV1_mV": 1.981,
+    "P_QRS_T_mm": [
+      190,
+      27,
+      59
+    ],
+    "QTCF": 637.9,
+    "RV5_SV1_mV": [
+      1.217,
+      -0.764
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 10:32:57",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_103254.pdf",
+    "HR_bpm": 120,
+    "PR_ms": 210,
+    "QRS_ms": 58,
+    "QT_ms": 538,
+    "QTc_ms": 558,
+    "ST_ms": 0,
+    "RR_ms": 500,
+    "RV5_plus_SV1_mV": 1.987,
+    "P_QRS_T_mm": [
+      192,
+      28,
+      60
+    ],
+    "QTCF": 677.8,
+    "RV5_SV1_mV": [
+      1.218,
+      -0.769
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 10:33:30",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_103328.pdf",
+    "HR_bpm": 120,
+    "PR_ms": 210,
+    "QRS_ms": 58,
+    "QT_ms": 534,
+    "QTc_ms": 554,
+    "ST_ms": 0,
+    "RR_ms": 500,
+    "RV5_plus_SV1_mV": 1.984,
+    "P_QRS_T_mm": [
+      79,
+      25,
+      57
+    ],
+    "QTCF": 672.8,
+    "RV5_SV1_mV": [
+      1.24,
+      -0.744
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 11:08:19",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_110817.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 146,
+    "QRS_ms": 58,
+    "QT_ms": 274,
+    "QTc_ms": 294,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 1.99,
+    "P_QRS_T_mm": [
+      137,
+      28,
+      53
+    ],
+    "QTCF": 345.2,
+    "RV5_SV1_mV": [
+      1.332,
+      -0.658
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 11:32:59",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_113257.pdf",
+    "HR_bpm": 280,
+    "PR_ms": 144,
+    "QRS_ms": 58,
+    "QT_ms": 272,
+    "QTc_ms": 292,
+    "ST_ms": 0,
+    "RR_ms": 214,
+    "RV5_plus_SV1_mV": 1.988,
+    "P_QRS_T_mm": [
+      147,
+      29,
+      52
+    ],
+    "QTCF": 322.5,
+    "RV5_SV1_mV": [
+      1.332,
+      -0.656
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 12:05:09",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_120507.pdf",
+    "HR_bpm": 200,
+    "PR_ms": 144,
+    "QRS_ms": 58,
+    "QT_ms": 272,
+    "QTc_ms": 292,
+    "ST_ms": 0,
+    "RR_ms": 300,
+    "RV5_plus_SV1_mV": 1.988,
+    "P_QRS_T_mm": [
+      104,
+      27,
+      52
+    ],
+    "QTCF": 454.7,
+    "RV5_SV1_mV": [
+      1.328,
+      -0.66
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 12:07:30",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_120728.pdf",
+    "HR_bpm": 112,
+    "PR_ms": 168,
+    "QRS_ms": 68,
+    "QT_ms": 488,
+    "QTc_ms": 508,
+    "ST_ms": 0,
+    "RR_ms": 535,
+    "RV5_plus_SV1_mV": 1.983,
+    "P_QRS_T_mm": [
+      220,
+      35,
+      54
+    ],
+    "QTCF": 729.0,
+    "RV5_SV1_mV": [
+      1.256,
+      -0.728
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 12:47:29",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_124727.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 144,
+    "QRS_ms": 58,
+    "QT_ms": 272,
+    "QTc_ms": 292,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 1.989,
+    "P_QRS_T_mm": [
+      142,
+      28,
+      53
+    ],
+    "QTCF": 335.1,
+    "RV5_SV1_mV": [
+      1.329,
+      -0.66
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 13:50:13",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_135011.pdf",
+    "HR_bpm": 100,
+    "PR_ms": 146,
+    "QRS_ms": 58,
+    "QT_ms": 274,
+    "QTc_ms": 294,
+    "ST_ms": 0,
+    "RR_ms": 600,
+    "RV5_plus_SV1_mV": 1.996,
+    "P_QRS_T_mm": [
+      140,
+      28,
+      53
+    ],
+    "QTCF": 324.9,
+    "RV5_SV1_mV": [
+      1.335,
+      -0.661
+    ]
+  },
+  {
+    "timestamp": "2025-12-18 14:31:07",
+    "file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251218_143105.pdf",
+    "HR_bpm": 0,
+    "PR_ms": 0,
+    "QRS_ms": 0,
+    "QT_ms": 0,
+    "QTc_ms": 0,
+    "ST_ms": 0,
+    "RR_ms": 0,
+    "RV5_plus_SV1_mV": 0.0,
+    "P_QRS_T_mm": [
+      0,
+      0,
+      0
+    ],
+    "QTCF": null,
+    "RV5_SV1_mV": [
+      0.0,
+      0.0
+    ]
   }
 ]

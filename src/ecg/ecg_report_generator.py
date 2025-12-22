@@ -995,29 +995,33 @@ def generate_ecg_report(
         except Exception:
             return default
 
-    # ==================== STEP 1: Get HR_bpm from metrics.json (PRIORITY) ====================
-    # Priority: metrics.json  latest HR_bpm  (calculation-based beats  )
-    latest_metrics = load_latest_metrics_entry(reports_dir)
+    # ==================== STEP 1: Get HR_bpm - PRIORITIZE DASHBOARD CURRENT VALUES ====================
+    # When user clicks "Generate Report", use EXACT values from metric_labels (what they see on screen)
     hr_bpm_value = 0
     
-    # Priority 1: metrics.json  latest HR_bpm (CALCULATION-BASED BEATS   REQUIRED)
-    if latest_metrics:
-        hr_bpm_value = _safe_int(latest_metrics.get("HR_bpm"))
+    # Priority 1: Data passed from dashboard (current metric_labels values) - HIGHEST PRIORITY
+    # This ensures report shows what user sees on screen when they click generate
+    if dashboard_instance is not None:
+        # Dashboard passed current values - use them directly
+        hr_candidate = data.get("HR_bpm") or data.get("Heart_Rate") or data.get("HR") or data.get("beat") or data.get("HR_avg")
+        hr_bpm_value = _safe_int(hr_candidate)
         if hr_bpm_value > 0:
-            print(f" Using HR_bpm from metrics.json: {hr_bpm_value} bpm (for calculation-based beats)")
+            print(f"✅ Using HR_bpm from dashboard metric_labels (current display): {hr_bpm_value} bpm")
     
-    # Priority 2: Fallback to data parameter
+    # Priority 2: Fallback to data parameter (if no dashboard_instance but data provided)
     if hr_bpm_value == 0:
-        hr_candidate = data.get("HR_bpm") or data.get("Heart_Rate") or data.get("HR")
+        hr_candidate = data.get("HR_bpm") or data.get("Heart_Rate") or data.get("HR") or data.get("beat") or data.get("HR_avg")
         hr_bpm_value = _safe_int(hr_candidate)
         if hr_bpm_value > 0:
             print(f" Using HR_bpm from data parameter: {hr_bpm_value} bpm")
     
-    # Priority 3: Fallback to HR_avg
-    if hr_bpm_value == 0 and data.get("HR_avg"):
-        hr_bpm_value = _safe_int(data.get("HR_avg"))
-        if hr_bpm_value > 0:
-            print(f" Using HR_bpm from HR_avg: {hr_bpm_value} bpm")
+    # Priority 3: Fallback to metrics.json (only if no dashboard data available)
+    if hr_bpm_value == 0:
+        latest_metrics = load_latest_metrics_entry(reports_dir)
+        if latest_metrics:
+            hr_bpm_value = _safe_int(latest_metrics.get("HR_bpm"))
+            if hr_bpm_value > 0:
+                print(f" Using HR_bpm from metrics.json (fallback): {hr_bpm_value} bpm")
 
     data["HR_bpm"] = hr_bpm_value
     data["Heart_Rate"] = hr_bpm_value
@@ -1302,36 +1306,45 @@ def generate_ecg_report(
 
     # Report Overview
     story.append(Paragraph("<b>Report Overview</b>", styles['Heading3']))
-    # Build heart rate statistics over rolling ≥10s RR/HR arrays; fall back to "--"
-    hr_values = []
-    rr_values = []
-    for key in ["hr_values", "hr_list", "hr_buffer", "hr_history", "hr_series", "hr_per_minute_for_report"]:
-        vals = data.get(key)
-        if isinstance(vals, (list, tuple, np.ndarray)):
-            for v in vals:
-                vf = _safe_float(v)
-                if vf and vf > 0:
-                    hr_values.append(vf)
-    for key in ["RR_ms_series", "RR_ms_window"]:
-        vals = data.get(key)
-        if isinstance(vals, (list, tuple, np.ndarray)):
-            for v in vals:
-                vf = _safe_float(v)
-                if vf and vf > 0:
-                    rr_values.append(vf)
-    # Include single RR_ms if present
-    rr_single = _safe_float(data.get("RR_ms"))
-    if rr_single and rr_single > 0:
-        rr_values.append(rr_single)
-    # If only RR available, convert to HR
-    if rr_values and not hr_values:
-        hr_values = [60000.0 / v for v in rr_values if v > 0]
-    # Ensure window length roughly ≥10s (500 Hz → 5000 samples, but use count proxy)
-    if len(hr_values) < 2 and hr_bpm_value and hr_bpm_value > 0:
-        hr_values.append(hr_bpm_value)
-    max_hr = max(hr_values) if hr_values else None
-    min_hr = min(hr_values) if hr_values else None
-    avg_hr = float(np.mean(hr_values)) if hr_values else None
+    # When dashboard_instance is provided, use CURRENT HR from metric_labels (snapshot at Generate click)
+    # Otherwise, build heart rate statistics over rolling ≥10s RR/HR arrays
+    if dashboard_instance is not None and hr_bpm_value > 0:
+        # Use current HR value from dashboard metric_labels (what user sees when clicking Generate)
+        max_hr = hr_bpm_value
+        min_hr = hr_bpm_value
+        avg_hr = hr_bpm_value
+        print(f"✅ Using current HR from dashboard metric_labels: {hr_bpm_value} bpm (snapshot at Generate click)")
+    else:
+        # Build heart rate statistics over rolling ≥10s RR/HR arrays; fall back to "--"
+        hr_values = []
+        rr_values = []
+        for key in ["hr_values", "hr_list", "hr_buffer", "hr_history", "hr_series", "hr_per_minute_for_report"]:
+            vals = data.get(key)
+            if isinstance(vals, (list, tuple, np.ndarray)):
+                for v in vals:
+                    vf = _safe_float(v)
+                    if vf and vf > 0:
+                        hr_values.append(vf)
+        for key in ["RR_ms_series", "RR_ms_window"]:
+            vals = data.get(key)
+            if isinstance(vals, (list, tuple, np.ndarray)):
+                for v in vals:
+                    vf = _safe_float(v)
+                    if vf and vf > 0:
+                        rr_values.append(vf)
+        # Include single RR_ms if present
+        rr_single = _safe_float(data.get("RR_ms"))
+        if rr_single and rr_single > 0:
+            rr_values.append(rr_single)
+        # If only RR available, convert to HR
+        if rr_values and not hr_values:
+            hr_values = [60000.0 / v for v in rr_values if v > 0]
+        # Ensure window length roughly ≥10s (500 Hz → 5000 samples, but use count proxy)
+        if len(hr_values) < 2 and hr_bpm_value and hr_bpm_value > 0:
+            hr_values.append(hr_bpm_value)
+        max_hr = max(hr_values) if hr_values else None
+        min_hr = min(hr_values) if hr_values else None
+        avg_hr = float(np.mean(hr_values)) if hr_values else None
 
     def _fmt_bpm(value):
         return f"{value:.0f} bpm" if value and value > 0 else "--"
@@ -1390,8 +1403,10 @@ def generate_ecg_report(
             pass
         return "--"
 
+    # Use hr_bpm_value (from dashboard metric_labels when available) for Heart Rate in OBSERVATION table
+    obs_hr_value = hr_bpm_value if hr_bpm_value > 0 else data.get('beat') or data.get('HR') or data.get('Heart_Rate') or data.get('HR_bpm')
     obs_data = [
-        ["Heart Rate", _fmt_bpm(data.get('beat')), "60-100"],                    
+        ["Heart Rate", _fmt_bpm(obs_hr_value), "60-100"],                    
         ["PR Interval", _fmt_ms(data.get('PR')), "120 ms - 200 ms"],            
         ["QRS Complex", _fmt_ms(data.get('QRS')), "70 ms - 120 ms"],            
         ["QRS Axis", _fmt_deg(data.get('QRS_axis') or data.get('Axis')), "Normal"],         

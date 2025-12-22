@@ -2218,5 +2218,21 @@
     "patient_name": "HARSH THAKURR",
     "date_time": "2025-12-19 17:27:57",
     "id": 12
+  },
+  {
+    "date": "2025-12-22",
+    "time": "15:25:25",
+    "report_type": "12 Lead",
+    "report_file": "/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/ECG_Report_20251222_152522.pdf",
+    "first_name": "HARSH",
+    "last_name": "THAKURR",
+    "age": "25",
+    "gender": "Other",
+    "doctor": "ptrrrrrrrrrrrr",
+    "doctor_mobile": "5684768946",
+    "Org.": "pratyakshhhhhhhhhhh",
+    "patient_name": "HARSH THAKURR",
+    "date_time": "2025-12-22 15:25:25",
+    "id": 12
   }
 ]

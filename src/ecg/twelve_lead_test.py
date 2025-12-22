@@ -1122,6 +1122,11 @@ class ECGTestPage(QWidget):
     def __init__(self, test_name, stacked_widget):
         super().__init__()
         
+        # When True, this page will NOT overwrite BPM/metrics labels itself.
+        # The main dashboard becomes the single source of truth and pushes
+        # values into our metric_labels so both pages always match.
+        self._use_dashboard_metrics_only = True
+        
         # Set responsive size policy
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setMinimumSize(800, 600)  # Minimum size for usability
@@ -3242,6 +3247,22 @@ class ECGTestPage(QWidget):
     def update_ecg_metrics_display(self, heart_rate, pr_interval, qrs_duration, qrs_axis, st_interval, qt_interval=None, qtc_interval=None, qtcf_interval=None):
         """Update the ECG metrics display in the UI (dashboard: BPM, PR, QRS axis, ST, QT/QTc, timer only)"""
         try:
+            # If dashboard is the source of truth, cache values only and
+            # avoid touching the on-screen labels. This guarantees the
+            # dashboard BPM/metrics and the ECG 12‑lead page stay identical.
+            if getattr(self, "_use_dashboard_metrics_only", False):
+                self._last_computed_metrics = {
+                    "heart_rate": heart_rate,
+                    "pr_interval": pr_interval,
+                    "qrs_duration": qrs_duration,
+                    "qrs_axis": qrs_axis,
+                    "st_interval": st_interval,
+                    "qt_interval": qt_interval,
+                    "qtc_interval": qtc_interval,
+                    "qtcf_interval": qtcf_interval,
+                }
+                return
+
             # Throttle updates to every 1.0 second to feel responsive but stable
             import time as _time
             if not hasattr(self, '_last_metric_update_ts'):
@@ -3292,34 +3313,72 @@ class ECGTestPage(QWidget):
         try:
             metrics = {}
             
-            # Check if we have real signal data
-            has_real_signal = False
-            if len(self.data) > 1:  # Lead II data available
-                lead_ii_data = self.data[1]
-                if len(lead_ii_data) >= 100 and not np.all(lead_ii_data == 0) and np.std(lead_ii_data) >= 0.1:
-                    has_real_signal = True
-            
-            # Get current heart rate
-            if has_real_signal:
-                heart_rate = self.calculate_heart_rate(self.data[1])
-                metrics['heart_rate'] = f"{heart_rate}" if heart_rate > 0 else "0"
+            # When dashboard is the source of truth for labels, prefer cached
+            # computed values instead of the on-screen labels (which are not
+            # being updated locally).
+            if getattr(self, "_use_dashboard_metrics_only", False) and hasattr(self, "_last_computed_metrics"):
+                cached = self._last_computed_metrics
+                metrics["heart_rate"] = (
+                    str(int(round(cached.get("heart_rate", 0)))) if cached.get("heart_rate") not in (None, "") else "0"
+                )
+                metrics["pr_interval"] = (
+                    str(int(round(cached.get("pr_interval", 0)))) if cached.get("pr_interval") not in (None, "") else "--"
+                )
+                metrics["qrs_duration"] = (
+                    str(int(round(cached.get("qrs_duration", 0)))) if cached.get("qrs_duration") not in (None, "") else "--"
+                )
+                metrics["qrs_axis"] = (
+                    str(int(round(cached.get("qrs_axis", 0)))) if cached.get("qrs_axis") not in (None, "") else "--"
+                )
+                st_val = cached.get("st_interval")
+                if st_val is None or st_val == "":
+                    metrics["st_interval"] = "--"
+                else:
+                    try:
+                        metrics["st_interval"] = f"{float(st_val):.2f}"
+                    except Exception:
+                        metrics["st_interval"] = str(st_val)
+                qt_val = cached.get("qt_interval")
+                qtc_val = cached.get("qtc_interval")
+                if qt_val or qtc_val:
+                    qt_part = (
+                        str(int(round(qt_val))) if isinstance(qt_val, (int, float)) else (str(qt_val) if qt_val else "")
+                    )
+                    qtc_part = (
+                        str(int(round(qtc_val))) if isinstance(qtc_val, (int, float)) else (str(qtc_val) if qtc_val else "")
+                    )
+                    metrics["qtc_interval"] = qt_part if not qtc_part else (f"{qt_part}/{qtc_part}" if qt_part else qtc_part)
+                else:
+                    metrics["qtc_interval"] = "--"
             else:
-                metrics['heart_rate'] = "0"
-            
-            # Get other metrics from UI labels (these should be zero if reset properly)
-            if hasattr(self, 'metric_labels'):
-                if 'pr_interval' in self.metric_labels:
-                    metrics['pr_interval'] = self.metric_labels['pr_interval'].text().replace(' ms', '')
-                if 'qrs_duration' in self.metric_labels:
-                    metrics['qrs_duration'] = self.metric_labels['qrs_duration'].text().replace(' ms', '')
-                if 'qrs_axis' in self.metric_labels:
-                    metrics['qrs_axis'] = self.metric_labels['qrs_axis'].text().replace('°', '')
-                if 'st_interval' in self.metric_labels:
-                    metrics['st_interval'] = self.metric_labels['st_interval'].text().strip().replace(' ms', '').replace(' mV', '').replace(' mV mV', '')
-                if 'qtc_interval' in self.metric_labels:
-                    metrics['qtc_interval'] = self.metric_labels['qtc_interval'].text().strip().replace(' ms', '')
-                if 'time_elapsed' in self.metric_labels:
-                    metrics['time_elapsed'] = self.metric_labels['time_elapsed'].text()
+                # Check if we have real signal data
+                has_real_signal = False
+                if len(self.data) > 1:  # Lead II data available
+                    lead_ii_data = self.data[1]
+                    if len(lead_ii_data) >= 100 and not np.all(lead_ii_data == 0) and np.std(lead_ii_data) >= 0.1:
+                        has_real_signal = True
+                
+                # Get current heart rate
+                if has_real_signal:
+                    heart_rate = self.calculate_heart_rate(self.data[1])
+                    metrics['heart_rate'] = f"{heart_rate}" if heart_rate > 0 else "0"
+                else:
+                    metrics['heart_rate'] = "0"
+                
+                # Get other metrics from UI labels (these should be zero if reset properly)
+                if hasattr(self, 'metric_labels'):
+                    if 'pr_interval' in self.metric_labels:
+                        metrics['pr_interval'] = self.metric_labels['pr_interval'].text().replace(' ms', '')
+                    if 'qrs_duration' in self.metric_labels:
+                        metrics['qrs_duration'] = self.metric_labels['qrs_duration'].text().replace(' ms', '')
+                    if 'qrs_axis' in self.metric_labels:
+                        metrics['qrs_axis'] = self.metric_labels['qrs_axis'].text().replace('°', '')
+                    if 'st_interval' in self.metric_labels:
+                        metrics['st_interval'] = self.metric_labels['st_interval'].text().strip().replace(' ms', '').replace(' mV', '').replace(' mV mV', '')
+                    if 'qtc_interval' in self.metric_labels:
+                        metrics['qtc_interval'] = self.metric_labels['qtc_interval'].text().strip().replace(' ms', '')
+                    if 'time_elapsed' in self.metric_labels:
+                        metrics['time_elapsed'] = self.metric_labels['time_elapsed'].text()
             
             # Get sampling rate
             if hasattr(self, 'sampler') and self.sampler.sampling_rate > 0:
@@ -3573,6 +3632,11 @@ class ECGTestPage(QWidget):
         return metrics_frame
 
     def update_ecg_metrics_on_top_of_lead_graphs(self, intervals):
+        # When dashboard is driving metrics, never overwrite labels here.
+        if getattr(self, "_use_dashboard_metrics_only", False):
+            self._last_computed_intervals = dict(intervals) if isinstance(intervals, dict) else intervals
+            return
+
         if 'Heart_Rate' in intervals and intervals['Heart_Rate'] is not None:
             self.metric_labels['heart_rate'].setText(
                 f"{int(round(intervals['Heart_Rate']))}" if isinstance(intervals['Heart_Rate'], (int, float)) else str(intervals['Heart_Rate'])
