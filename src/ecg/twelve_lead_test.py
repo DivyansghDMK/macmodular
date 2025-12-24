@@ -1642,8 +1642,8 @@ class ECGTestPage(QWidget):
         positions = [(i, j) for i in range(4) for j in range(3)]
         for i in range(len(self.leads)):
             plot_widget = pg.PlotWidget()
-            plot_widget.setBackground('#1a1a1a')  # Dark gray background for better visibility
-            plot_widget.showGrid(x=False, y=False)  # Hide grid completely
+            plot_widget.setBackground('white')  # White background - clean medical display
+            plot_widget.showGrid(x=False, y=False)  # Hide grid completely - clean white boxes
             
             # Remove all axis labels, ticks, and numbers
             plot_widget.getAxis('left').setTicks([])
@@ -6559,14 +6559,22 @@ class ECGTestPage(QWidget):
                     except Exception as filter_error:
                         print(f"⚠️ Overlay AC filter skipped for lead {lead}: {filter_error}")
                     
-                    # Center data around baseline before applying gain
+                    # Use stable baseline anchor (same as main plots) to prevent breathing pattern
                     centered_raw = np.array(filtered_segment, dtype=float)
                     if centered_raw.size:
-                        finite_mask = np.isfinite(centered_raw)
-                        if np.any(finite_mask):
-                            baseline = np.nanmedian(centered_raw[finite_mask])
-                            if np.isfinite(baseline):
-                                centered_raw = centered_raw - baseline
+                        # Initialize baseline anchors if needed
+                        if not hasattr(self, '_baseline_anchors'):
+                            self._baseline_anchors = [0.0] * 12
+                            self._baseline_alpha_slow = 0.0005  # Monitor-grade: ~4 sec time constant
+                        
+                        # Extract low-frequency baseline estimate (removes respiration)
+                        baseline_estimate = self._extract_low_frequency_baseline(centered_raw, sampling_rate)
+                        
+                        # Update anchor with slow EMA (tracks only very-low-frequency drift)
+                        self._baseline_anchors[idx] = (1 - self._baseline_alpha_slow) * self._baseline_anchors[idx] + self._baseline_alpha_slow * baseline_estimate
+                        
+                        # Subtract stable anchor (NOT per-window mean/median) to prevent breathing pattern
+                        centered_raw = centered_raw - self._baseline_anchors[idx]
                         centered_raw = np.nan_to_num(centered_raw, copy=False)
                     else:
                         centered_raw = np.zeros(buffer_len, dtype=float)
@@ -7252,14 +7260,22 @@ class ECGTestPage(QWidget):
                     except Exception as filter_error:
                         print(f"⚠️ 6:2 overlay AC filter skipped for lead {lead}: {filter_error}")
                     
-                    # Center data around baseline before applying gain
+                    # Use stable baseline anchor (same as main plots) to prevent breathing pattern
                     centered_raw = np.array(filtered_segment, dtype=float)
                     if centered_raw.size:
-                        finite_mask = np.isfinite(centered_raw)
-                        if np.any(finite_mask):
-                            baseline = np.nanmedian(centered_raw[finite_mask])
-                            if np.isfinite(baseline):
-                                centered_raw = centered_raw - baseline
+                        # Initialize baseline anchors if needed
+                        if not hasattr(self, '_baseline_anchors'):
+                            self._baseline_anchors = [0.0] * 12
+                            self._baseline_alpha_slow = 0.0005  # Monitor-grade: ~4 sec time constant
+                        
+                        # Extract low-frequency baseline estimate (removes respiration)
+                        baseline_estimate = self._extract_low_frequency_baseline(centered_raw, sampling_rate)
+                        
+                        # Update anchor with slow EMA (tracks only very-low-frequency drift)
+                        self._baseline_anchors[idx] = (1 - self._baseline_alpha_slow) * self._baseline_anchors[idx] + self._baseline_alpha_slow * baseline_estimate
+                        
+                        # Subtract stable anchor (NOT per-window mean/median) to prevent breathing pattern
+                        centered_raw = centered_raw - self._baseline_anchors[idx]
                         centered_raw = np.nan_to_num(centered_raw, copy=False)
                     else:
                         centered_raw = np.zeros(buffer_len, dtype=float)
