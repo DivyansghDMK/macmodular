@@ -1642,8 +1642,8 @@ class ECGTestPage(QWidget):
         positions = [(i, j) for i in range(4) for j in range(3)]
         for i in range(len(self.leads)):
             plot_widget = pg.PlotWidget()
-            plot_widget.setBackground('white')  # White background - clean medical display
-            plot_widget.showGrid(x=False, y=False)  # Hide grid completely - clean white boxes
+            plot_widget.setBackground('#1a1a1a')  # Dark gray background for better visibility
+            plot_widget.showGrid(x=False, y=False)  # Hide grid completely
             
             # Remove all axis labels, ticks, and numbers
             plot_widget.getAxis('left').setTicks([])
