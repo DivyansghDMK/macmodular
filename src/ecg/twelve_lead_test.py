@@ -1613,8 +1613,8 @@ class ECGTestPage(QWidget):
         # --- REPLACED: Matplotlib plot area is replaced with a simple QWidget container ---
         self.plot_area = QWidget()
         self.plot_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        # Set black background to match plot widgets
-        self.plot_area.setStyleSheet("background-color: #1a1a1a;")
+        # Set white background to match plot widgets
+        self.plot_area.setStyleSheet("background-color: white;")
         main_vbox.addWidget(self.plot_area)
 
         # --- NEW: Create the PyQtGraph plot grid (from GitHub version) ---
@@ -1623,26 +1623,26 @@ class ECGTestPage(QWidget):
         self.plot_widgets = []
         self.data_lines = []
         
-        # All waves use medical green color
+        # Color-coded waves - each lead has unique color
         lead_colors = {
-            'I': '#00ff00',      # Medical Green
-            'II': '#00ff00',     # Medical Green
-            'III': '#00ff00',    # Medical Green
-            'aVR': '#00ff00',    # Medical Green
-            'aVL': '#00ff00',    # Medical Green
-            'aVF': '#00ff00',    # Medical Green
-            'V1': '#00ff00',     # Medical Green
-            'V2': '#00ff00',     # Medical Green
-            'V3': '#00ff00',     # Medical Green
-            'V4': '#00ff00',     # Medical Green
-            'V5': '#00ff00',     # Medical Green
-            'V6': '#00ff00'      # Medical Green
+            'I': '#00ff99',      # Cyan-Green
+            'II': '#ff0055',     # Magenta-Pink
+            'III': '#0099ff',    # Blue
+            'aVR': '#ff9900',    # Orange
+            'aVL': '#cc00ff',    # Purple-Magenta
+            'aVF': '#00ccff',    # Cyan-Blue
+            'V1': '#ffcc00',     # Gold-Yellow
+            'V2': '#00ffcc',     # Turquoise
+            'V3': '#ff6600',     # Orange-Red
+            'V4': '#6600ff',     # Purple
+            'V5': '#00b894',     # Teal-Green
+            'V6': '#ff0066'      # Pink-Red
         }
         
         positions = [(i, j) for i in range(4) for j in range(3)]
         for i in range(len(self.leads)):
             plot_widget = pg.PlotWidget()
-            plot_widget.setBackground('#1a1a1a')  # Dark gray background for better visibility
+            plot_widget.setBackground('white')  # White background with color-coded waves
             plot_widget.showGrid(x=False, y=False)  # Hide grid completely
             
             # Remove all axis labels, ticks, and numbers
@@ -1678,11 +1678,12 @@ class ECGTestPage(QWidget):
                 except Exception:
                     pass
             
-            # Add border frame around plot widget to identify lead box (green border to match waves)
+            # Add border frame around plot widget (use lead color for border)
+            border_color = lead_color
             plot_widget.setStyleSheet(f"""
                 QWidget {{
-                    border: 1px solid #00ff00;
-                    background-color: #1a1a1a;
+                    border: 2px solid {border_color};
+                    background-color: white;
                 }}
             """)
             
@@ -1695,11 +1696,11 @@ class ECGTestPage(QWidget):
             # Create waveform line with thicker pen (medical monitor style)
             data_line = plot_widget.plot(pen=pg.mkPen(color=lead_color, width=2.0))  # Increased from 0.7 to 2.0
             
-            # Add beautiful lead name label in center (heat map style)
+            # Add beautiful lead name label in center (use lead color)
             # Create text item with large, bold font and semi-transparent for elegant look
             lead_text = pg.TextItem(
                 text=lead_name,
-                color='#00ff00',  # Medical green
+                color=lead_color,  # Use lead-specific color
                 anchor=(0.5, 0.5),  # Center anchor
                 border=None,
                 fill=None
