@@ -1555,7 +1555,7 @@ class Dashboard(QWidget):
                 # 2) Elapsed-time timer on ECG test page
                 if hasattr(self.ecg_test_page, 'elapsed_timer') and self.ecg_test_page.elapsed_timer is not None:
                     if self.ecg_test_page.elapsed_timer.isActive():
-                    return True
+                        return True
         except Exception:
             pass
         return False
