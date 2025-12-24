@@ -1149,18 +1149,18 @@ class ECGTestPage(QWidget):
         "ECG Live Monitoring": ["II"]
     }
     LEAD_COLORS = {
-        "I": "#00ff00",      # Medical Green
-        "II": "#00ff00",      # Medical Green
-        "III": "#00ff00",     # Medical Green
-        "aVR": "#00ff00",     # Medical Green
-        "aVL": "#00ff00",     # Medical Green
-        "aVF": "#00ff00",     # Medical Green
-        "V1": "#00ff00",      # Medical Green
-        "V2": "#00ff00",      # Medical Green
-        "V3": "#00ff00",      # Medical Green
-        "V4": "#00ff00",      # Medical Green
-        "V5": "#00ff00",      # Medical Green
-        "V6": "#00ff00"       # Medical Green
+        "I": "#00ff99",      # Cyan-Green
+        "II": "#ff0055",     # Magenta-Pink
+        "III": "#0099ff",    # Blue
+        "aVR": "#ff9900",    # Orange
+        "aVL": "#cc00ff",    # Purple-Magenta
+        "aVF": "#00ccff",    # Cyan-Blue
+        "V1": "#ffcc00",     # Gold-Yellow
+        "V2": "#00ffcc",     # Turquoise
+        "V3": "#ff6600",     # Orange-Red
+        "V4": "#6600ff",     # Purple
+        "V5": "#00b894",     # Teal-Green
+        "V6": "#ff0066"      # Pink-Red
     }
 
     def __init__(self, test_name, stacked_widget):
