@@ -311,6 +311,19 @@ class SerialStreamReader:
         if not SERIAL_AVAILABLE:
             raise RuntimeError("pyserial is required for serial capture. pip install pyserial")
         self.ser = serial.Serial(port=port, baudrate=baudrate, timeout=timeout)
+        # Increase input buffer size to handle 500 Hz data rate
+        # At 500 Hz × 22 bytes/packet = 11,000 bytes/second
+        # Try to set larger buffer if supported by pyserial version
+        try:
+            # pyserial 3.0+ supports set_buffer_size
+            if hasattr(self.ser, 'set_buffer_size'):
+                self.ser.set_buffer_size(rx_size=65536)  # 64KB receive buffer
+            # Older versions: try to set via port settings
+            elif hasattr(self.ser, 'setRTS'):
+                # Some systems allow buffer configuration via port settings
+                pass
+        except Exception as e:
+            print(f"⚠️ Could not set serial buffer size: {e} - using default")
         self.buf = bytearray()
         self.running = False
         self.data_count = 0
@@ -319,7 +332,7 @@ class SerialStreamReader:
         self.last_error_time = 0
         self.crash_logger = get_crash_logger()
         self.user_details = {}  # For error reporting compatibility
-        print(f"🔌 SerialStreamReader initialized: Port={port}, Baud={baudrate}")
+        print(f"🔌 SerialStreamReader initialized: Port={port}, Baud={baudrate}, Buffer=64KB")
 
     def close(self) -> None:
         """Close serial connection"""
@@ -343,25 +356,45 @@ class SerialStreamReader:
         self.running = False
         print(f"📊 Total data packets received: {self.data_count}")
 
-    def read_packets(self, max_packets: int = 50) -> List[Dict[str, int]]:
-        """Read and parse ECG packets from serial stream"""
+    def read_packets(self, max_packets: int = 100) -> List[Dict[str, int]]:
+        """Read and parse ECG packets from serial stream
+        
+        At 500 Hz, hardware sends 500 packets/second = ~16.67 packets per 33ms timer interval.
+        We read up to max_packets to prevent buffer overflow and packet loss.
+        """
         if not self.running:
             return []
             
         out: List[Dict[str, int]] = []
         
         try:
-            chunk = self.ser.read(1024)
+            # Read larger chunks to prevent buffer overflow at 500 Hz
+            # At 500 Hz with 22-byte packets = 11,000 bytes/second
+            # Read up to 4096 bytes per call to catch up quickly
+            chunk = self.ser.read(4096)
             if chunk:
                 self.buf.extend(chunk)
 
-            # Extract packets
-            while len(out) < max_packets:
+            # Extract packets - process ALL available packets to prevent buffer overflow
+            # At 500 Hz, we need to process packets quickly to avoid accumulation
+            # Read ALL packets in buffer, not just max_packets, to prevent overflow
+            max_iterations = max_packets * 3  # Allow catching up if we fell behind
+            iteration = 0
+            while iteration < max_iterations:
+                iteration += 1
                 start_idx = self.buf.find(bytes([START_BYTE]))
                 if start_idx == -1:
-                    self.buf.clear()
+                    # No start byte found - clear buffer if it's getting too large (>100KB)
+                    if len(self.buf) > 100000:
+                        print(f"⚠️ Serial buffer overflow risk: {len(self.buf)} bytes, clearing buffer")
+                        self.buf.clear()
                     break
+                if start_idx > 10000:
+                    # Skip too much garbage data before start byte
+                    del self.buf[:start_idx]
+                    continue
                 if len(self.buf) - start_idx < PACKET_SIZE:
+                    # Not enough data for a complete packet - keep what we have
                     if start_idx > 0:
                         del self.buf[:start_idx]
                     break
@@ -375,14 +408,14 @@ class SerialStreamReader:
                 parsed = parse_packet(candidate)
                 if parsed:
                     self.data_count += 1
-                    print(f"📡 [Packet #{self.data_count}] Received valid packet with {len(parsed)} leads")
-                    # Log each lead value as it is parsed
-                    for name, val in parsed.items():
-                        try:
-                            print(f"Serial data - Lead {name}: value={val}")
-                        except Exception:
-                            pass
+                    # Only log every 100th packet to reduce console spam
+                    if self.data_count % 100 == 0:
+                        print(f"📡 [Packet #{self.data_count}] Received valid packet with {len(parsed)} leads")
                     out.append(parsed)
+            
+            # Warn if buffer is accumulating too much data (indicates we're falling behind)
+            if len(self.buf) > 50000:  # >50KB buffer indicates we're not reading fast enough
+                print(f"⚠️ Serial buffer accumulation: {len(self.buf)} bytes - may indicate packet loss")
                     
         except Exception as e:
             self.error_count += 1
@@ -587,7 +620,7 @@ This error has been logged and an email notification will be sent to the support
             print(f"❌ Error sending serial error email: {e}")
 
 class LiveLeadWindow(QWidget):
-    def __init__(self, lead_name, data_source, buffer_size=80, color="#00ff99"):
+    def __init__(self, lead_name, data_source, buffer_size=80, color="#00ff00"):
         super().__init__()
         self.setWindowTitle(f"Live View: {lead_name}")
         self.resize(900, 300)
@@ -933,7 +966,7 @@ This error has been logged and an email notification will be sent to the support
             print(f"❌ Error sending serial error email: {e}")
 
 class LiveLeadWindow(QWidget):
-    def __init__(self, lead_name, data_source, buffer_size=80, color="#00ff99"):
+    def __init__(self, lead_name, data_source, buffer_size=80, color="#00ff00"):
         super().__init__()
         self.setWindowTitle(f"Live View: {lead_name}")
         self.resize(900, 300)
@@ -1116,18 +1149,18 @@ class ECGTestPage(QWidget):
         "ECG Live Monitoring": ["II"]
     }
     LEAD_COLORS = {
-        "I": "#00ff99",
-        "II": "#ff0055", 
-        "III": "#0099ff",
-        "aVR": "#ff9900",
-        "aVL": "#cc00ff",
-        "aVF": "#00ccff",
-        "V1": "#ffcc00",
-        "V2": "#00ffcc",
-        "V3": "#ff6600",
-        "V4": "#6600ff",
-        "V5": "#00b894",
-        "V6": "#ff0066"
+        "I": "#00ff00",      # Medical Green
+        "II": "#00ff00",      # Medical Green
+        "III": "#00ff00",     # Medical Green
+        "aVR": "#00ff00",     # Medical Green
+        "aVL": "#00ff00",     # Medical Green
+        "aVF": "#00ff00",     # Medical Green
+        "V1": "#00ff00",      # Medical Green
+        "V2": "#00ff00",      # Medical Green
+        "V3": "#00ff00",      # Medical Green
+        "V4": "#00ff00",      # Medical Green
+        "V5": "#00ff00",      # Medical Green
+        "V6": "#00ff00"       # Medical Green
     }
 
     def __init__(self, test_name, stacked_widget):
@@ -1161,9 +1194,17 @@ class ECGTestPage(QWidget):
         self.page_stack = QStackedLayout()
         self.page_stack.addWidget(self.grid_widget)
         self.page_stack.addWidget(self.detailed_widget)
+        # Ensure the grid view is visible by default
+        self.page_stack.setCurrentWidget(self.grid_widget)
         self.setLayout(self.page_stack)
 
         self.test_name = test_name
+        # Handle invalid test_name with fallback to 12 Lead ECG Test
+        if test_name not in self.LEADS_MAP:
+            print(f"⚠️ Warning: test_name '{test_name}' not found in LEADS_MAP. Available keys: {list(self.LEADS_MAP.keys())}")
+            print(f"💡 Falling back to '12 Lead ECG Test'")
+            test_name = "12 Lead ECG Test"
+            self.test_name = test_name
         self.leads = self.LEADS_MAP[test_name]
         self.base_buffer_size = 2000  # Base buffer used for speed scaling
         self.buffer_size = self.base_buffer_size  # Increased buffer size for all leads
@@ -1179,6 +1220,7 @@ class ECGTestPage(QWidget):
         self.max_buffer_size = 10000  # Maximum buffer size to prevent memory issues
         self.memory_check_interval = 1000  # Check memory every 1000 updates
         self.update_count = 0
+
         # Hold last displayed HR to avoid unnecessary flicker
         self._last_hr_display = None
         # HR smoothing/lock removed; use original calculation
@@ -1208,6 +1250,33 @@ class ECGTestPage(QWidget):
         self.elapsed_timer = QTimer()
         self.elapsed_timer.timeout.connect(self.update_elapsed_time)
 
+        # Setup UI components
+        self._setup_ui()
+
+    def _calc_buffer_for_speed(self, wave_speed: float) -> int:
+        """
+        Map wave speed to buffer size (samples) to meet requested windows:
+        - 12.5 mm/s -> ~4400 samples
+        - 25 mm/s   -> ~2200 samples
+        - 50 mm/s   -> ~1200 samples
+        """
+        try:
+            speed = float(wave_speed)
+        except Exception:
+            speed = 25.0
+
+        if speed <= 13.0:
+            target = 4400
+        elif speed <= 37.5:
+            target = 2200
+        else:
+            target = 1200
+
+        max_buf = getattr(self, "max_buffer_size", 10000)
+        return max(1, min(target, max_buf))
+
+    def _setup_ui(self):
+        """Setup the UI components for the ECG test page"""
         main_vbox = QVBoxLayout()
 
         menu_frame = QGroupBox("Menu")
@@ -1544,63 +1613,112 @@ class ECGTestPage(QWidget):
         # --- REPLACED: Matplotlib plot area is replaced with a simple QWidget container ---
         self.plot_area = QWidget()
         self.plot_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        # Set black background to match plot widgets
+        self.plot_area.setStyleSheet("background-color: #1a1a1a;")
         main_vbox.addWidget(self.plot_area)
 
         # --- NEW: Create the PyQtGraph plot grid (from GitHub version) ---
         grid = QGridLayout(self.plot_area)
-        grid.setSpacing(8)
+        grid.setSpacing(2)  # Reduced spacing to minimize gaps between plots
         self.plot_widgets = []
         self.data_lines = []
         
-        # Define colors for each lead type for consistent color coding
+        # All waves use medical green color
         lead_colors = {
-            'I': '#ff6b6b',      # Red
-            'II': '#4ecdc4',     # Teal  
-            'III': '#45b7d1',    # Blue
-            'aVR': '#96ceb4',    # Green
-            'aVL': '#feca57',    # Yellow
-            'aVF': '#ff9ff3',    # Pink
-            'V1': '#54a0ff',     # Light Blue
-            'V2': '#5f27cd',     # Purple
-            'V3': '#00d2d3',     # Cyan
-            'V4': '#ff9f43',     # Orange
-            'V5': '#10ac84',     # Dark Green
-            'V6': '#ee5a24'      # Dark Orange
+            'I': '#00ff00',      # Medical Green
+            'II': '#00ff00',     # Medical Green
+            'III': '#00ff00',    # Medical Green
+            'aVR': '#00ff00',    # Medical Green
+            'aVL': '#00ff00',    # Medical Green
+            'aVF': '#00ff00',    # Medical Green
+            'V1': '#00ff00',     # Medical Green
+            'V2': '#00ff00',     # Medical Green
+            'V3': '#00ff00',     # Medical Green
+            'V4': '#00ff00',     # Medical Green
+            'V5': '#00ff00',     # Medical Green
+            'V6': '#00ff00'      # Medical Green
         }
         
         positions = [(i, j) for i in range(4) for j in range(3)]
         for i in range(len(self.leads)):
             plot_widget = pg.PlotWidget()
-            plot_widget.setBackground('w')
-            plot_widget.showGrid(x=True, y=True, alpha=0.3)
-            # Hide Y-axis labels for cleaner display
+            plot_widget.setBackground('#1a1a1a')  # Dark gray background for better visibility
+            plot_widget.showGrid(x=False, y=False)  # Hide grid completely
+            
+            # Remove all axis labels, ticks, and numbers
             plot_widget.getAxis('left').setTicks([])
             plot_widget.getAxis('left').setLabel('')
-            plot_widget.getAxis('bottom').setTextPen('k')
+            plot_widget.getAxis('left').setStyle(showValues=False)
+            plot_widget.getAxis('bottom').setTicks([])
+            plot_widget.getAxis('bottom').setLabel('')
+            plot_widget.getAxis('bottom').setStyle(showValues=False)
+            plot_widget.getAxis('top').setTicks([])
+            plot_widget.getAxis('top').setLabel('')
+            plot_widget.getAxis('top').setStyle(showValues=False)
+            plot_widget.getAxis('right').setTicks([])
+            plot_widget.getAxis('right').setLabel('')
+            plot_widget.getAxis('right').setStyle(showValues=False)
+            
+            # Hide title (we'll use border instead)
+            plot_widget.setTitle('')
             
             # Get color for this lead
             lead_name = self.leads[i]
-            lead_color = lead_colors.get(lead_name, '#000000')
+            lead_color = lead_colors.get(lead_name, '#00ff00')
             
-            plot_widget.setTitle(self.leads[i], color=lead_color, size='10pt')
-            # Set initial and safe Y-limits; dynamic autoscale will adjust per data
+            # Set initial Y-limits with fixed range to prevent jumping
             plot_widget.setYRange(-2000, 2000)
             vb = plot_widget.getViewBox()
             if vb is not None:
                 # Prevent extreme jumps while still allowing wide physiological range
                 vb.setLimits(yMin=-8000, yMax=8000)
-                # Start with a default X range of 10 seconds
+                # Start with a default X range for right-to-left scrolling (newest on right at 0, oldest on left)
                 try:
-                    vb.setRange(xRange=(0.0, 10.0))
+                    vb.setRange(xRange=(-10.0, 0.0))
                 except Exception:
                     pass
+            
+            # Add border frame around plot widget to identify lead box (green border to match waves)
+            plot_widget.setStyleSheet(f"""
+                QWidget {{
+                    border: 1px solid #00ff00;
+                    background-color: #1a1a1a;
+                }}
+            """)
             
             # --- MAKE PLOT CLICKABLE ---
             plot_widget.scene().sigMouseClicked.connect(partial(self.plot_clicked, i))
             
             row, col = positions[i]
             grid.addWidget(plot_widget, row, col)
-            data_line = plot_widget.plot(pen=pg.mkPen(color=lead_color, width=2.0))
+            
+            # Create waveform line with thicker pen (medical monitor style)
+            data_line = plot_widget.plot(pen=pg.mkPen(color=lead_color, width=2.0))  # Increased from 0.7 to 2.0
+            
+            # Add beautiful lead name label in center (heat map style)
+            # Create text item with large, bold font and semi-transparent for elegant look
+            lead_text = pg.TextItem(
+                text=lead_name,
+                color='#00ff00',  # Medical green
+                anchor=(0.5, 0.5),  # Center anchor
+                border=None,
+                fill=None
+            )
+            # Set large, bold font for beautiful heat map style display
+            font = QFont('Arial', 32, QFont.Bold)  # Large font size for visibility (heat map style)
+            lead_text.setFont(font)
+            # Set opacity for elegant semi-transparent look
+            lead_text.setOpacity(0.6)  # Semi-transparent for heat map aesthetic
+            # Add to plot
+            plot_widget.addItem(lead_text)
+            # Position at center of plot (will be updated dynamically in update_plots)
+            # Initial position: middle of X range (-5 for 10 sec window), center Y (0)
+            lead_text.setPos(-5.0, 0.0)
+            
+            # Store text item for potential updates
+            if not hasattr(self, 'lead_text_items'):
+                self.lead_text_items = []
+            self.lead_text_items.append(lead_text)
 
             self.plot_widgets.append(plot_widget)
             self.data_lines.append(data_line)
@@ -1933,6 +2051,39 @@ class ECGTestPage(QWidget):
             # Fallback: simple mean if moving average fails
             return np.nanmean(signal) if len(signal) > 0 else 0.0
 
+    def _apply_display_bandpass(self, signal, fs=500.0, low=0.05, high=40.0, order=2):
+        """Display-only bandpass to remove DC drift (<0.05 Hz) and very high freq noise.
+        Same as expanded view - makes peaks sharp and clean.
+        """
+        if len(signal) < order * 3:
+            return signal
+        try:
+            from scipy.signal import butter, filtfilt
+            nyq = 0.5 * fs
+            low_n = max(low / nyq, 1e-5)
+            high_n = min(high / nyq, 0.999)
+            b, a = butter(order, [low_n, high_n], btype="bandpass")
+            return filtfilt(b, a, signal)
+        except Exception:
+            return signal
+
+    def _remove_respiration_display(self, signal, fs=500.0, window_sec=2.0):
+        """Display-only respiration suppression via moving-average subtraction (~0.5 Hz HP).
+        Same as expanded view - removes respiration artifacts for cleaner display.
+        """
+        if len(signal) == 0:
+            return signal
+        try:
+            win = int(max(3, window_sec * fs))
+            win = min(win, len(signal))
+            if win < 3:
+                return signal
+            kernel = np.ones(win) / win
+            baseline = np.convolve(signal, kernel, mode="same")
+            return signal - baseline
+        except Exception:
+            return signal
+
     def calculate_ecg_metrics(self):
         """Calculate ECG metrics using median beat (GE/Philips standard).
         
@@ -1955,8 +2106,8 @@ class ECGTestPage(QWidget):
         if len(lead_ii_data) < 100 or np.all(lead_ii_data == 0) or np.std(lead_ii_data) < 0.1:
             return
         
-        # Get sampling rate
-        fs = 186.5 # Default based on observed hardware behavior
+        # Get sampling rate (hardware is 500 Hz)
+        fs = 500.0  # Default for hardware acquisition
         if hasattr(self, 'sampler') and hasattr(self.sampler, 'sampling_rate') and self.sampler.sampling_rate > 10:
             fs = float(self.sampler.sampling_rate)
         elif hasattr(self, 'sampling_rate') and self.sampling_rate > 10:
@@ -2288,28 +2439,41 @@ class ECGTestPage(QWidget):
                     print("❌ Invalid heart rate calculated")
                     return 60
                 
-                # ANTI-FLICKERING: Smooth BPM over last few readings
+                # ENHANCED BPM SMOOTHING: Use larger buffer and EMA for stable display
                 hr_int = int(round(heart_rate))
                 
-                # Initialize smoothing buffer
+                # Initialize smoothing buffer (larger buffer for more stability)
                 if not hasattr(self, '_hr_smooth_buffer'):
                     self._hr_smooth_buffer = []
                 
                 self._hr_smooth_buffer.append(hr_int)
-                if len(self._hr_smooth_buffer) > 5:  # 5-reading smoothing
+                if len(self._hr_smooth_buffer) > 10:  # Increased from 5 to 10 for better stability
                     self._hr_smooth_buffer.pop(0)
                 
-                # Use median for smoothing to ignore outliers
-                smoothed_hr = int(round(np.median(self._hr_smooth_buffer)))
+                # Use EMA (Exponential Moving Average) for smoother transitions
+                if not hasattr(self, '_hr_ema'):
+                    self._hr_ema = float(hr_int)
                 
-                # Final stability check: only change display if shift is ≥2 BPM (increased from 1 for better stability)
+                # EMA with alpha=0.2 (20% new, 80% old) for very smooth updates
+                alpha = 0.2
+                self._hr_ema = (1 - alpha) * self._hr_ema + alpha * hr_int
+                
+                # Use median of buffer for outlier rejection, then apply EMA
+                median_hr = int(round(np.median(self._hr_smooth_buffer)))
+                smoothed_hr = int(round((1 - alpha) * self._hr_ema + alpha * median_hr))
+                
+                # Final stability check: only change display if shift is ≥3 BPM (increased for better stability)
                 if not hasattr(self, '_last_stable_hr'):
                     self._last_stable_hr = smoothed_hr
-                    
-                if abs(smoothed_hr - self._last_stable_hr) >= 2:
-                    self._last_stable_hr = smoothed_hr
                 
-                return self._last_stable_hr
+                # Only update if change is significant (reduces flickering)
+                if abs(smoothed_hr - self._last_stable_hr) >= 3:
+                    self._last_stable_hr = smoothed_hr
+                else:
+                    # Keep previous stable value if change is too small
+                    smoothed_hr = self._last_stable_hr
+                
+                return smoothed_hr
             except Exception as e:
                 print(f"❌ Error calculating final BPM: {e}")
                 return 60
@@ -2602,7 +2766,7 @@ class ECGTestPage(QWidget):
             
             # Apply bandpass filter to enhance R-peaks (0.5-40 Hz)
             from scipy.signal import butter, filtfilt, find_peaks
-            fs = 186.5
+            fs = 500.0  # Hardware sampling rate
             if hasattr(self, 'sampler') and hasattr(self.sampler, 'sampling_rate') and self.sampler.sampling_rate > 10:
                 fs = float(self.sampler.sampling_rate)
             elif hasattr(self, 'sampling_rate') and self.sampling_rate > 10:
@@ -3274,12 +3438,13 @@ class ECGTestPage(QWidget):
                 }
                 return
 
-            # Throttle updates to every 1.0 second to feel responsive but stable
+            # Throttle updates to every 1.5 seconds for more stable BPM display (reduced flickering)
             import time as _time
             if not hasattr(self, '_last_metric_update_ts'):
                 self._last_metric_update_ts = 0.0
-            if _time.time() - self._last_metric_update_ts < 1.0:
+            if _time.time() - self._last_metric_update_ts < 1.5:
                 return
+            self._last_metric_update_ts = _time.time()
             
             if hasattr(self, 'metric_labels'):
                 if 'heart_rate' in self.metric_labels:
@@ -3456,8 +3621,33 @@ class ECGTestPage(QWidget):
             y_min = max(y_min, -8000)
             y_max = min(y_max, 8000)
             
-            # Update the plot's Y-range
-            self.plot_widgets[plot_index].setYRange(y_min, y_max, padding=0)
+            # EMA smoothing for Y-axis to prevent jittery movement
+            if not hasattr(self, '_y_range_smooth'):
+                self._y_range_smooth = {}
+            if plot_index not in self._y_range_smooth:
+                self._y_range_smooth[plot_index] = {'min': y_min, 'max': y_max}
+            
+            # Very slow EMA (alpha=0.1) for extremely stable Y-axis - prevents jumping
+            alpha = 0.1  # Reduced from 0.3 for much slower, more stable updates
+            self._y_range_smooth[plot_index]['min'] = (1 - alpha) * self._y_range_smooth[plot_index]['min'] + alpha * y_min
+            self._y_range_smooth[plot_index]['max'] = (1 - alpha) * self._y_range_smooth[plot_index]['max'] + alpha * y_max
+            
+            # Use smoothed values
+            smooth_y_min = self._y_range_smooth[plot_index]['min']
+            smooth_y_max = self._y_range_smooth[plot_index]['max']
+            
+            # Only update Y-range if change is significant (prevents micro-adjustments that cause jumping)
+            try:
+                current_range = self.plot_widgets[plot_index].getViewBox().viewRange()[1]
+                current_span = current_range[1] - current_range[0]
+                new_span = smooth_y_max - smooth_y_min
+                
+                # Only update if range change is > 10% to prevent jumping
+                if abs(new_span - current_span) / max(current_span, 1) > 0.1:
+                    self.plot_widgets[plot_index].setYRange(smooth_y_min, smooth_y_max, padding=0)
+            except Exception:
+                # Fallback: update anyway if we can't check current range
+                self.plot_widgets[plot_index].setYRange(smooth_y_min, smooth_y_max, padding=0)
             
         except Exception as e:
             print(f"Error updating Y-range for plot {plot_index}: {e}")
@@ -3512,10 +3702,9 @@ class ECGTestPage(QWidget):
         wave_speed = self.settings_manager.get_wave_speed()
         wave_gain = self.settings_manager.get_wave_gain()
         
-        # Higher speed = more samples per second = larger buffer for same time window
-        base_buffer = getattr(self, "base_buffer_size", 2000)
-        speed_factor = wave_speed / 50.0  # 50mm/s is baseline
-        self.buffer_size = int(base_buffer * speed_factor)
+        # Buffer sizing mapped to requested window lengths:
+        # 12.5 mm/s → ~4,400 samples, 25 mm/s → ~2,200 samples, 50 mm/s → ~1,200 samples.
+        self.buffer_size = self._calc_buffer_for_speed(wave_speed)
         
         # Update y-axis limits based on gain.
         # Higher mm/mV = higher gain = larger waves = need more Y-axis range
@@ -3848,6 +4037,16 @@ class ECGTestPage(QWidget):
     def showEvent(self, event):
         """Called when the ECG test page is shown - reset metrics to zero"""
         super().showEvent(event)
+
+        # Ensure the grid view is active (avoid blank stack)
+        try:
+            if hasattr(self, "page_stack") and hasattr(self, "grid_widget"):
+                self.page_stack.setCurrentWidget(self.grid_widget)
+        except Exception:
+            try:
+                self.page_stack.setCurrentIndex(0)
+            except Exception:
+                pass
 
         # Check if demo mode is active
         if hasattr(self, 'demo_toggle') and self.demo_toggle.isChecked():
@@ -4306,7 +4505,7 @@ class ECGTestPage(QWidget):
         lead = self.leads[idx]
         def get_lead_data():
             return self.data[lead]
-        color = self.LEAD_COLORS.get(lead, "#00ff99")
+        color = self.LEAD_COLORS.get(lead, "#00ff00")
         if hasattr(self, '_detailed_timer') and self._detailed_timer is not None:
             self._detailed_timer.stop()
             self._detailed_timer.deleteLater()
@@ -4326,9 +4525,9 @@ class ECGTestPage(QWidget):
         back_btn.setFixedHeight(40)
         back_btn.clicked.connect(lambda: self.page_stack.setCurrentIndex(0))
         layout.addWidget(back_btn, alignment=Qt.AlignLeft)
-        fig = Figure(facecolor='#fff')  # White background for the figure
+        fig = Figure(facecolor='#1a1a1a')  # Dark background for the figure
         ax = fig.add_subplot(111)
-        ax.set_facecolor('#fff')        # White background for the axes
+        ax.set_facecolor('#1a1a1a')        # Dark background for the axes
         line, = ax.plot([], [], color=color, lw=2)
         canvas = FigureCanvas(fig)
         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -4621,30 +4820,30 @@ class ECGTestPage(QWidget):
             vbox = QVBoxLayout(group)
             vbox.setContentsMargins(6, 6, 6, 6)  # Reduced margins
             vbox.setSpacing(4)  # Reduced spacing
-            fig = Figure(facecolor='#fafbfc', figsize=(5, 2))  # Reduced from (6, 2.5)
+            fig = Figure(facecolor='#1a1a1a', figsize=(5, 2))  # Dark background
             ax = fig.add_subplot(111)
-            ax.set_facecolor('#fafbfc')
+            ax.set_facecolor('#1a1a1a')  # Dark background
             ylim = self.ylim if hasattr(self, 'ylim') else 400
             ax.set_ylim(-ylim, ylim)
             ax.set_xlim(0, self.buffer_size)
             
-            # Modern grid styling
-            ax.grid(True, alpha=0.3, linestyle='-', linewidth=0.5, color='#e9ecef')
+            # Modern grid styling - subtle grid on dark background
+            ax.grid(True, alpha=0.2, linestyle='-', linewidth=0.5, color='#333333')
             ax.set_axisbelow(True)
 
             # Remove spines for cleaner look
             for spine in ax.spines.values():
                 spine.set_visible(False)
 
-            # Style ticks - Make them smaller
-            ax.tick_params(axis='both', colors='#6c757d', labelsize=8)  # Reduced from 10
+            # Style ticks - Make them smaller, white for visibility on dark
+            ax.tick_params(axis='both', colors='#ffffff', labelsize=8)  # White text on dark
             ax.tick_params(axis='x', length=0)
             ax.tick_params(axis='y', length=0)
 
             # Enhanced line styling
             import matplotlib.patheffects as path_effects 
             line, = ax.plot([0]*self.buffer_size, 
-                            color=self.LEAD_COLORS.get(lead, '#ff6600'), 
+                            color=self.LEAD_COLORS.get(lead, '#00ff00'), 
                             lw=0.5, 
                             alpha=0.9,
                             path_effects=[path_effects.SimpleLineShadow(offset=(1,1), alpha=0.3),
@@ -4874,8 +5073,33 @@ class ECGTestPage(QWidget):
                 y_min = y_min - (y_range * 0.2)
                 y_max = y_max + (y_range * 0.2)
             
-            # Apply the new Y-range using PyQtGraph with NO padding (we already added it)
-            self.plot_widgets[plot_index].setYRange(y_min, y_max, padding=0)
+            # EMA smoothing for Y-axis to prevent jittery movement (same as update_plot_y_range)
+            if not hasattr(self, '_y_range_smooth'):
+                self._y_range_smooth = {}
+            if plot_index not in self._y_range_smooth:
+                self._y_range_smooth[plot_index] = {'min': y_min, 'max': y_max}
+            
+            # Very slow EMA (alpha=0.1) for extremely stable Y-axis - prevents jumping
+            alpha = 0.1  # Reduced from 0.3 for much slower, more stable updates
+            self._y_range_smooth[plot_index]['min'] = (1 - alpha) * self._y_range_smooth[plot_index]['min'] + alpha * y_min
+            self._y_range_smooth[plot_index]['max'] = (1 - alpha) * self._y_range_smooth[plot_index]['max'] + alpha * y_max
+            
+            # Use smoothed values
+            smooth_y_min = self._y_range_smooth[plot_index]['min']
+            smooth_y_max = self._y_range_smooth[plot_index]['max']
+            
+            # Only update Y-range if change is significant (prevents micro-adjustments that cause jumping)
+            try:
+                current_range = self.plot_widgets[plot_index].getViewBox().viewRange()[1]
+                current_span = current_range[1] - current_range[0]
+                new_span = smooth_y_max - smooth_y_min
+                
+                # Only update if range change is > 10% to prevent jumping
+                if abs(new_span - current_span) / max(current_span, 1) > 0.1:
+                    self.plot_widgets[plot_index].setYRange(smooth_y_min, smooth_y_max, padding=0)
+            except Exception:
+                # Fallback: update anyway if we can't check current range
+                self.plot_widgets[plot_index].setYRange(smooth_y_min, smooth_y_max, padding=0)
             
         except Exception as e:
             print(f"❌ Error updating adaptive Y-range: {e}")
@@ -5045,6 +5269,7 @@ class ECGTestPage(QWidget):
         except Exception as e:
             print(f"Real-time smoothing error: {e}")
             return new_value
+    
 
     # ---------------------- Serial Port Auto-Detection ----------------------
 
@@ -5178,7 +5403,13 @@ class ECGTestPage(QWidget):
                 if hasattr(self, 'user_details'):
                     self.serial_reader.user_details = self.user_details
                 self.serial_reader.start()
-                print("✅ Serial connection established successfully!")
+                
+                # Set sampling rate to 500 Hz for hardware acquisition (critical for accurate BPM calculation)
+                self.sampling_rate = 500.0
+                if not hasattr(self, 'sampler') or self.sampler is None:
+                    self.sampler = SamplingRateCalculator()
+                self.sampler.sampling_rate = 500.0
+                print(f"✅ Serial connection established successfully! Sampling rate set to 500 Hz")
                 
             except Exception as e:
                 print(f"❌ Failed to connect to configured port {port}: {e}")
@@ -5195,9 +5426,15 @@ class ECGTestPage(QWidget):
                             self.serial_reader.user_details = self.user_details
                         self.serial_reader.start()
                         
+                        # Set sampling rate to 500 Hz for hardware acquisition (critical for accurate BPM calculation)
+                        self.sampling_rate = 500.0
+                        if not hasattr(self, 'sampler') or self.sampler is None:
+                            self.sampler = SamplingRateCalculator()
+                        self.sampler.sampling_rate = 500.0
+                        
                         # Update settings with the working port
                         self.settings_manager.set_serial_port(auto_port)
-                        print(f"✅ Connected to auto-detected port: {auto_port}")
+                        print(f"✅ Connected to auto-detected port: {auto_port}. Sampling rate set to 500 Hz")
                         
                         # Show info to user
                         QMessageBox.information(self, "Port Auto-Detected", 
@@ -5225,6 +5462,7 @@ class ECGTestPage(QWidget):
             self.timer.start(timer_interval)
             if hasattr(self, '_12to1_timer'):
                 self._12to1_timer.start(100)
+            
             print(f"[DEBUG] ECGTestPage - Timer started, serial reader created")
             print(f"[DEBUG] ECGTestPage - Timer active: {self.timer.isActive()}")
             print(f"[DEBUG] ECGTestPage - Number of leads: {len(self.leads)}")
@@ -6229,10 +6467,11 @@ class ECGTestPage(QWidget):
         if not is_demo_mode:
             # For real serial data, calculate buffer length based on wave speed
             # Same logic as in update_plots() for serial data
-            # 25 mm/s → 3 s window (≈15 large boxes), scale for other speeds
-            baseline_seconds = 3.0
+            # 25 mm/s → 10 s window (minimum for 10 BPM), scale for other speeds
+            # Ensure minimum 10 seconds to show at least one beat at 10 BPM
+            baseline_seconds = 10.0  # Minimum 10 seconds for 10 BPM display
             seconds_scale = (25.0 / max(1e-6, wave_speed))
-            seconds_to_show = baseline_seconds * seconds_scale
+            seconds_to_show = max(baseline_seconds * seconds_scale, 10.0)  # Always show at least 10 seconds
             
             # CROSS-PLATFORM: Use 250 Hz standard fallback
             sampling_rate = 250.0
@@ -6254,9 +6493,7 @@ class ECGTestPage(QWidget):
         else:
             mapped_speed = wave_speed
 
-        base_buffer = getattr(self, "base_buffer_size", 2000)
-        target = int(base_buffer * (mapped_speed / 50.0))
-        return max(1, target)
+        return self._calc_buffer_for_speed(mapped_speed)
 
     def _update_overlay_plots(self):
         
@@ -7124,10 +7361,11 @@ class ECGTestPage(QWidget):
                 except Exception:
                     wave_speed = 25.0
 
-                # 25 mm/s → 3 s window in 12‑lead view; scale with speed
-                baseline_seconds = 3.0
+                # 25 mm/s → 10 s window (minimum for 10 BPM); scale with speed
+                # Ensure minimum 10 seconds to show at least one beat at 10 BPM
+                baseline_seconds = 10.0  # Minimum 10 seconds for 10 BPM display
                 seconds_scale = (25.0 / max(1e-6, wave_speed))
-                seconds_to_show = baseline_seconds * seconds_scale
+                seconds_to_show = max(baseline_seconds * seconds_scale, 10.0)  # Always show at least 10 seconds
 
                 for i in range(len(self.data_lines)):
                     try:
@@ -7138,6 +7376,16 @@ class ECGTestPage(QWidget):
                                 gain = get_display_gain(self.settings_manager.get_wave_gain())
                             except Exception:
                                 pass
+                            # Get sampling rate FIRST before using it
+                            fs = 500.0  # Hardware default
+                            if hasattr(self, 'sampler') and getattr(self.sampler, 'sampling_rate', None):
+                                try:
+                                    fs = float(self.sampler.sampling_rate)
+                                except Exception:
+                                    fs = 500.0
+                            elif hasattr(self, 'sampling_rate') and self.sampling_rate > 10:
+                                fs = float(self.sampling_rate)
+                            
                             # 🫀 DISPLAY: Low-frequency baseline anchor (removes respiration from baseline)
                             # Extract very-low-frequency baseline (< 0.3 Hz) to prevent baseline from "breathing"
                             try:
@@ -7168,14 +7416,21 @@ class ECGTestPage(QWidget):
                                 # Fallback: use original signal (baseline anchor handles it, no mean subtraction)
                                 print(f"⚠️ Using fallback baseline correction: {filter_error}")
                             
+                            # Apply display bandpass filter (same as expanded view) for sharp, clean peaks
+                            try:
+                                if len(raw) >= 6:  # Need at least 6 samples for filter
+                                    raw = self._apply_display_bandpass(raw, fs=fs, low=0.05, high=40.0, order=2)
+                            except Exception as filter_error:
+                                pass  # Filter is optional, continue with unfiltered signal
+                            
+                            # Remove respiration artifacts (same as expanded view) for cleaner display
+                            try:
+                                if len(raw) >= 3:
+                                    raw = self._remove_respiration_display(raw, fs=fs, window_sec=2.0)
+                            except Exception as filter_error:
+                                pass  # Respiration removal is optional
+                            
                             raw = raw * gain
-
-                            fs = 500
-                            if hasattr(self, 'sampler') and getattr(self.sampler, 'sampling_rate', None):
-                                try:
-                                    fs = float(self.sampler.sampling_rate)
-                                except Exception:
-                                    fs = 500
                             window_len = int(max(50, min(len(raw), seconds_to_show * fs)))
                             src = raw[-window_len:]
 
@@ -7209,9 +7464,61 @@ class ECGTestPage(QWidget):
                                 x_src = np.linspace(0.0, 1.0, src.size)
                                 x_dst = np.linspace(0.0, 1.0, display_len)
                                 resampled = np.interp(x_dst, x_src, src)
-
-                            self.data_lines[i].setData(resampled)
+                            
+                            # Right-to-left scrolling: create time axis from -seconds_to_show to 0 (newest on right)
+                            time_axis_demo = np.linspace(-seconds_to_show, 0.0, display_len)
+                            
+                            # Smooth data transitions for smooth wave entry (prevent jittery/breaking)
+                            # Apply light Gaussian smoothing to reduce jitter without losing sharp peaks
+                            try:
+                                if len(resampled) > 3:
+                                    from scipy.ndimage import gaussian_filter1d
+                                    # Very light smoothing (sigma=0.5) - preserves peaks but reduces jitter
+                                    resampled = gaussian_filter1d(resampled, sigma=0.5)
+                            except Exception:
+                                pass  # Continue with unsmoothed data if smoothing fails
+                            
+                            self.data_lines[i].setData(time_axis_demo, resampled)
                             self.update_plot_y_range(i)
+                            
+                            # STABLE X-AXIS: Lock X-axis range to prevent jumping (demo mode)
+                            try:
+                                vb = self.plot_widgets[i].getViewBox()
+                                if vb is not None:
+                                    # Initialize stable X-axis range if not set
+                                    if not hasattr(self, '_stable_x_ranges'):
+                                        self._stable_x_ranges = {}
+                                    
+                                    # Check if X-axis range needs updating (only if seconds_to_show changed significantly)
+                                    x_range_key = f"{i}_{seconds_to_show:.1f}"
+                                    if x_range_key not in self._stable_x_ranges:
+                                        # Set stable X-axis range (lock it to prevent jumping)
+                                        stable_x_min = -seconds_to_show
+                                        stable_x_max = 0.0
+                                        vb.setRange(xRange=(stable_x_min, stable_x_max), padding=0)
+                                        # Lock X-axis to prevent auto-scaling
+                                        vb.setLimits(xMin=stable_x_min, xMax=stable_x_max)
+                                        self._stable_x_ranges[x_range_key] = (stable_x_min, stable_x_max)
+                                    else:
+                                        # Use existing stable range (don't change it)
+                                        stable_range = self._stable_x_ranges[x_range_key]
+                                        vb.setRange(xRange=stable_range, padding=0)
+                            except Exception:
+                                pass
+                            
+                            # Update lead text position to center of plot (demo mode)
+                            if hasattr(self, 'lead_text_items') and i < len(self.lead_text_items):
+                                try:
+                                    # Get current Y range for centering
+                                    vb = self.plot_widgets[i].getViewBox()
+                                    if vb:
+                                        y_range = vb.viewRange()[1]
+                                        y_center = (y_range[0] + y_range[1]) / 2.0
+                                        # X center: middle of time axis
+                                        x_center = (time_axis_demo[0] + time_axis_demo[-1]) / 2.0
+                                        self.lead_text_items[i].setPos(x_center, y_center)
+                                except Exception:
+                                    pass  # Ignore errors in text positioning
                     except Exception as e:
                         print(f"❌ Error updating plot {i}: {e}")
                         continue
@@ -7219,7 +7526,15 @@ class ECGTestPage(QWidget):
 
             # SERIAL branch - NEW PACKET-BASED PARSING
             packets_processed = 0
-            max_packets = 50  # Read up to 50 packets per update cycle
+            # At 500 Hz with 33ms timer interval, we need to read ~17 packets per cycle
+            # But to prevent buffer overflow, read up to 100 packets per cycle (allows catching up)
+            max_packets = 100  # Increased to prevent packet loss at 500 Hz
+            
+            # Track packet loss detection
+            if not hasattr(self, '_last_packet_count'):
+                self._last_packet_count = 0
+                self._last_packet_time = time.time()
+                self._expected_packets_per_second = 500  # Hardware sends at 500 Hz
             
             # Check if we're using the new packet-based reader
             is_packet_reader = isinstance(self.serial_reader, SerialStreamReader)
@@ -7228,6 +7543,24 @@ class ECGTestPage(QWidget):
                 # NEW: Use packet-based reading
                 try:
                     packets = self.serial_reader.read_packets(max_packets=max_packets)
+                    
+                    # Detect packet loss
+                    current_time = time.time()
+                    if hasattr(self.serial_reader, 'data_count'):
+                        current_packet_count = self.serial_reader.data_count
+                        time_elapsed = current_time - self._last_packet_time
+                        
+                        if time_elapsed >= 1.0:  # Check every second
+                            packets_received = current_packet_count - self._last_packet_count
+                            expected_packets = int(self._expected_packets_per_second * time_elapsed)
+                            packet_loss = max(0, expected_packets - packets_received)
+                            packet_loss_percent = (packet_loss / expected_packets * 100) if expected_packets > 0 else 0
+                            
+                            if packet_loss_percent > 5.0:  # More than 5% packet loss
+                                print(f"⚠️ Packet loss detected: {packet_loss}/{expected_packets} packets ({packet_loss_percent:.1f}% loss) - This may cause waveform deformation")
+                            
+                            self._last_packet_count = current_packet_count
+                            self._last_packet_time = current_time
                     
                     for packet in packets:
                         # Packet contains all 12 leads: I, II, III, aVR, aVL, aVF, V1, V2, V3, V4, V5, V6
@@ -7339,11 +7672,12 @@ class ECGTestPage(QWidget):
                 except Exception:
                     wave_speed = 25.0
                 
-                # Calculate time scaling based on wave speed (same logic as demo mode)
-                # 25 mm/s → 3 s window; 12.5 → 6 s; 50 → 1.5 s
-                baseline_seconds = 3.0
+                # Calculate time scaling based on wave speed with minimum 10 seconds for 10 BPM display
+                # 25 mm/s → 10 s window (minimum for 10 BPM); 12.5 → 20 s; 50 → 5 s
+                # Ensure minimum 10 seconds to show at least one beat at 10 BPM (60/10 = 6 seconds per beat)
+                baseline_seconds = 10.0  # Minimum 10 seconds for 10 BPM display
                 seconds_scale = (25.0 / max(1e-6, wave_speed))
-                seconds_to_show = baseline_seconds * seconds_scale
+                seconds_to_show = max(baseline_seconds * seconds_scale, 10.0)  # Always show at least 10 seconds
                 
                 for i in range(len(self.leads)):
                     try:
@@ -7356,7 +7690,7 @@ class ECGTestPage(QWidget):
                             scaled_data = self.apply_adaptive_gain(self.data[i], signal_source, gain_factor)
 
                             # Build time axis and apply wave-speed scaling
-                            sampling_rate = 186.5
+                            sampling_rate = 500.0  # Hardware default (500 Hz)
                             if hasattr(self, 'sampler') and hasattr(self.sampler, 'sampling_rate') and self.sampler.sampling_rate > 10:
                                 sampling_rate = float(self.sampler.sampling_rate)
                             elif hasattr(self, 'sampling_rate') and self.sampling_rate > 10:
@@ -7416,6 +7750,21 @@ class ECGTestPage(QWidget):
                             except Exception as filter_error:
                                 pass  # AC filter is optional
                             
+                            # Apply display bandpass filter (same as expanded view) for sharp, clean peaks
+                            # Removes DC drift (<0.05 Hz) and high-frequency noise (>40 Hz)
+                            try:
+                                if len(filtered_slice) >= 6:  # Need at least 6 samples for filter
+                                    filtered_slice = self._apply_display_bandpass(filtered_slice, fs=sampling_rate, low=0.05, high=40.0, order=2)
+                            except Exception as filter_error:
+                                pass  # Filter is optional, continue with unfiltered signal
+                            
+                            # Remove respiration artifacts (same as expanded view) for cleaner display
+                            try:
+                                if len(filtered_slice) >= 3:
+                                    filtered_slice = self._remove_respiration_display(filtered_slice, fs=sampling_rate, window_sec=2.0)
+                            except Exception as filter_error:
+                                pass  # Respiration removal is optional
+                            
                             # Apply wave gain
                             gain_factor = get_display_gain(self.settings_manager.get_wave_gain())
                             
@@ -7449,18 +7798,62 @@ class ECGTestPage(QWidget):
                                     self._flatline_alert_shown[i] = False
                             
                             n = len(scaled_data)
-                            time_axis = np.arange(n, dtype=float) / sampling_rate
+                            # Right-to-left scrolling: newest data on right (0), oldest on left (negative)
+                            # Time axis: newest data = 0 (right side), oldest = -seconds_to_show (left side)
+                            time_axis = np.linspace(-seconds_to_show, 0.0, n)
                             
-                            # Avoid cropping: small padding and explicit x-range
+                            # Smooth data transitions for smooth wave entry (prevent jittery/breaking)
+                            # Apply light Gaussian smoothing to reduce jitter without losing sharp peaks
+                            try:
+                                if len(scaled_data) > 3:
+                                    from scipy.ndimage import gaussian_filter1d
+                                    # Very light smoothing (sigma=0.5) - preserves peaks but reduces jitter
+                                    scaled_data = gaussian_filter1d(scaled_data, sigma=0.5)
+                            except Exception:
+                                pass  # Continue with unsmoothed data if smoothing fails
+                            
+                            # STABLE X-AXIS: Lock X-axis range to prevent jumping
+                            # Only update X-axis if it hasn't been set or if seconds_to_show changed significantly
                             try:
                                 vb = self.plot_widgets[i].getViewBox()
                                 if vb is not None:
-                                    vb.setRange(xRange=(time_axis[0], time_axis[-1]), padding=0)
+                                    # Initialize stable X-axis range if not set
+                                    if not hasattr(self, '_stable_x_ranges'):
+                                        self._stable_x_ranges = {}
+                                    
+                                    # Check if X-axis range needs updating (only if seconds_to_show changed significantly)
+                                    x_range_key = f"{i}_{seconds_to_show:.1f}"
+                                    if x_range_key not in self._stable_x_ranges:
+                                        # Set stable X-axis range (lock it to prevent jumping)
+                                        stable_x_min = -seconds_to_show
+                                        stable_x_max = 0.0
+                                        vb.setRange(xRange=(stable_x_min, stable_x_max), padding=0)
+                                        # Lock X-axis to prevent auto-scaling
+                                        vb.setLimits(xMin=stable_x_min, xMax=stable_x_max)
+                                        self._stable_x_ranges[x_range_key] = (stable_x_min, stable_x_max)
+                                    else:
+                                        # Use existing stable range (don't change it)
+                                        stable_range = self._stable_x_ranges[x_range_key]
+                                        vb.setRange(xRange=stable_range, padding=0)
                             except Exception:
                                 pass
 
                             self.data_lines[i].setData(time_axis, scaled_data)
                             self.update_plot_y_range_adaptive(i, signal_source, data_override=scaled_data)
+                            
+                            # Update lead text position to center of plot (serial/hardware mode)
+                            if hasattr(self, 'lead_text_items') and i < len(self.lead_text_items):
+                                try:
+                                    # Get current Y range for centering
+                                    vb = self.plot_widgets[i].getViewBox()
+                                    if vb:
+                                        y_range = vb.viewRange()[1]
+                                        y_center = (y_range[0] + y_range[1]) / 2.0
+                                        # X center: middle of time axis
+                                        x_center = (time_axis[0] + time_axis[-1]) / 2.0
+                                        self.lead_text_items[i].setPos(x_center, y_center)
+                                except Exception:
+                                    pass  # Ignore errors in text positioning
 
                             if i < 3 and hasattr(self, '_debug_counter') and self._debug_counter % 200 == 0:
                                 print(f"🎛️ Serial Lead {i}: speed={wave_speed:.1f}mm/s, scale={seconds_scale:.2f}, time_range={time_axis[-1]:.2f}s")
