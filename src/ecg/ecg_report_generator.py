@@ -1020,7 +1020,7 @@ def generate_ecg_report(
         latest_metrics = load_latest_metrics_entry(reports_dir)
         if latest_metrics:
             hr_bpm_value = _safe_int(latest_metrics.get("HR_bpm"))
-            if hr_bpm_value > 0:
+        if hr_bpm_value > 0:
                 print(f" Using HR_bpm from metrics.json (fallback): {hr_bpm_value} bpm")
 
     data["HR_bpm"] = hr_bpm_value
@@ -1315,36 +1315,36 @@ def generate_ecg_report(
         avg_hr = hr_bpm_value
         print(f"✅ Using current HR from dashboard metric_labels: {hr_bpm_value} bpm (snapshot at Generate click)")
     else:
-        # Build heart rate statistics over rolling ≥10s RR/HR arrays; fall back to "--"
-        hr_values = []
-        rr_values = []
-        for key in ["hr_values", "hr_list", "hr_buffer", "hr_history", "hr_series", "hr_per_minute_for_report"]:
-            vals = data.get(key)
-            if isinstance(vals, (list, tuple, np.ndarray)):
-                for v in vals:
-                    vf = _safe_float(v)
-                    if vf and vf > 0:
-                        hr_values.append(vf)
-        for key in ["RR_ms_series", "RR_ms_window"]:
-            vals = data.get(key)
-            if isinstance(vals, (list, tuple, np.ndarray)):
-                for v in vals:
-                    vf = _safe_float(v)
-                    if vf and vf > 0:
-                        rr_values.append(vf)
-        # Include single RR_ms if present
-        rr_single = _safe_float(data.get("RR_ms"))
-        if rr_single and rr_single > 0:
-            rr_values.append(rr_single)
-        # If only RR available, convert to HR
-        if rr_values and not hr_values:
-            hr_values = [60000.0 / v for v in rr_values if v > 0]
-        # Ensure window length roughly ≥10s (500 Hz → 5000 samples, but use count proxy)
-        if len(hr_values) < 2 and hr_bpm_value and hr_bpm_value > 0:
-            hr_values.append(hr_bpm_value)
-        max_hr = max(hr_values) if hr_values else None
-        min_hr = min(hr_values) if hr_values else None
-        avg_hr = float(np.mean(hr_values)) if hr_values else None
+    # Build heart rate statistics over rolling ≥10s RR/HR arrays; fall back to "--"
+    hr_values = []
+    rr_values = []
+    for key in ["hr_values", "hr_list", "hr_buffer", "hr_history", "hr_series", "hr_per_minute_for_report"]:
+        vals = data.get(key)
+        if isinstance(vals, (list, tuple, np.ndarray)):
+            for v in vals:
+                vf = _safe_float(v)
+                if vf and vf > 0:
+                    hr_values.append(vf)
+    for key in ["RR_ms_series", "RR_ms_window"]:
+        vals = data.get(key)
+        if isinstance(vals, (list, tuple, np.ndarray)):
+            for v in vals:
+                vf = _safe_float(v)
+                if vf and vf > 0:
+                    rr_values.append(vf)
+    # Include single RR_ms if present
+    rr_single = _safe_float(data.get("RR_ms"))
+    if rr_single and rr_single > 0:
+        rr_values.append(rr_single)
+    # If only RR available, convert to HR
+    if rr_values and not hr_values:
+        hr_values = [60000.0 / v for v in rr_values if v > 0]
+    # Ensure window length roughly ≥10s (500 Hz → 5000 samples, but use count proxy)
+    if len(hr_values) < 2 and hr_bpm_value and hr_bpm_value > 0:
+        hr_values.append(hr_bpm_value)
+    max_hr = max(hr_values) if hr_values else None
+    min_hr = min(hr_values) if hr_values else None
+    avg_hr = float(np.mean(hr_values)) if hr_values else None
 
     def _fmt_bpm(value):
         return f"{value:.0f} bpm" if value and value > 0 else "--"

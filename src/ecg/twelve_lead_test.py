@@ -1678,11 +1678,10 @@ class ECGTestPage(QWidget):
                 except Exception:
                     pass
             
-            # Add border frame around plot widget (use lead color for border)
-            border_color = lead_color
+            # No border - clean white background only
             plot_widget.setStyleSheet(f"""
                 QWidget {{
-                    border: 2px solid {border_color};
+                    border: none;
                     background-color: white;
                 }}
             """)

@@ -1555,7 +1555,7 @@ class Dashboard(QWidget):
                 # 2) Elapsed-time timer on ECG test page
                 if hasattr(self.ecg_test_page, 'elapsed_timer') and self.ecg_test_page.elapsed_timer is not None:
                     if self.ecg_test_page.elapsed_timer.isActive():
-                        return True
+                    return True
         except Exception:
             pass
         return False
@@ -1745,7 +1745,7 @@ class Dashboard(QWidget):
             # Apply bandpass filter to enhance R-peaks (0.5-40 Hz)
             # This filter works for the full 10-300 BPM range
             try:
-                nyquist = fs / 2
+            nyquist = fs / 2
                 if nyquist <= 0:
                     nyquist = 125.0  # Safe fallback
                 low = max(0.01, 0.5 / nyquist)  # Prevent division issues
@@ -1753,8 +1753,8 @@ class Dashboard(QWidget):
                 if low >= high:
                     low = 0.01
                     high = 0.99
-                b, a = butter(4, [low, high], btype='band')
-                filtered_signal = filtfilt(b, a, ecg_signal)
+            b, a = butter(4, [low, high], btype='band')
+            filtered_signal = filtfilt(b, a, ecg_signal)
             except Exception as e:
                 print(f"⚠️ Filter error: {e}, using unfiltered signal")
                 filtered_signal = ecg_signal
@@ -1762,8 +1762,8 @@ class Dashboard(QWidget):
             # SMART ADAPTIVE PEAK DETECTION (10-300 BPM with BPM-based selection)
             # Run multiple detections and choose based on CALCULATED BPM consistency
             try:
-                height_threshold = np.mean(filtered_signal) + 0.5 * np.std(filtered_signal)
-                prominence_threshold = np.std(filtered_signal) * 0.4
+            height_threshold = np.mean(filtered_signal) + 0.5 * np.std(filtered_signal)
+            prominence_threshold = np.std(filtered_signal) * 0.4
             except Exception:
                 height_threshold = np.max(filtered_signal) * 0.3
                 prominence_threshold = np.max(filtered_signal) * 0.2
@@ -1816,43 +1816,43 @@ class Dashboard(QWidget):
             
             # Strategy 3: Conservative (best for 60-120 BPM)
             try:
-                peaks_conservative, _ = find_peaks(
-                    filtered_signal,
-                    height=height_threshold,
+            peaks_conservative, _ = find_peaks(
+                filtered_signal,
+                height=height_threshold,
                     distance=int(0.5 * fs),  # 500ms - wider distance for low BPM
-                    prominence=prominence_threshold
-                )
-                if len(peaks_conservative) >= 2:
+                prominence=prominence_threshold
+            )
+            if len(peaks_conservative) >= 2:
                     rr_cons = np.diff(peaks_conservative) * (1000.0 / fs)
                     valid_cons = rr_cons[(rr_cons >= 500) & (rr_cons <= 1000)]  # 60-120 BPM
-                    if len(valid_cons) > 0:
+                if len(valid_cons) > 0:
                         median_rr = np.median(valid_cons)
                         if median_rr > 0:
                             bpm_cons = 60000.0 / median_rr
-                            std_cons = np.std(valid_cons)
+                    std_cons = np.std(valid_cons)
                             if 60 <= bpm_cons <= 120 and np.isfinite(bpm_cons):
-                                detection_results.append(('conservative', peaks_conservative, bpm_cons, std_cons))
+                    detection_results.append(('conservative', peaks_conservative, bpm_cons, std_cons))
             except Exception as e:
                 pass
             
             # Strategy 4: Normal (best for 100-180 BPM)
             try:
-                peaks_normal, _ = find_peaks(
-                    filtered_signal,
-                    height=height_threshold,
+            peaks_normal, _ = find_peaks(
+                filtered_signal,
+                height=height_threshold,
                     distance=int(0.3 * fs),  # 300ms - medium distance
-                    prominence=prominence_threshold
-                )
-                if len(peaks_normal) >= 2:
+                prominence=prominence_threshold
+            )
+            if len(peaks_normal) >= 2:
                     rr_norm = np.diff(peaks_normal) * (1000.0 / fs)
                     valid_norm = rr_norm[(rr_norm >= 333) & (rr_norm <= 600)]  # 100-180 BPM
-                    if len(valid_norm) > 0:
+                if len(valid_norm) > 0:
                         median_rr = np.median(valid_norm)
                         if median_rr > 0:
                             bpm_norm = 60000.0 / median_rr
-                            std_norm = np.std(valid_norm)
+                    std_norm = np.std(valid_norm)
                             if 100 <= bpm_norm <= 180 and np.isfinite(bpm_norm):
-                                detection_results.append(('normal', peaks_normal, bpm_norm, std_norm))
+                    detection_results.append(('normal', peaks_normal, bpm_norm, std_norm))
             except Exception as e:
                 pass
             
@@ -1892,7 +1892,7 @@ class Dashboard(QWidget):
                     height=height_threshold * 0.85,  # Lower threshold for better detection
                     distance=int(0.2 * fs),  # 200ms - for 200-300 BPM
                     prominence=prominence_threshold * 0.85  # Lower prominence for high rates
-                )
+            )
                 if len(peaks_fast) >= 2:
                     rr_fast = np.diff(peaks_fast) * (1000.0 / fs)
                     # Extended range: 200-350ms covers 171-300 BPM
@@ -2045,12 +2045,12 @@ class Dashboard(QWidget):
                 # Last resort: try wider distances
                 if len(peaks) < 2:
                     try:
-                        peaks, _ = find_peaks(
-                            filtered_signal,
-                            height=height_threshold,
+                peaks, _ = find_peaks(
+                    filtered_signal,
+                    height=height_threshold,
                             distance=int(0.4 * fs),  # 400ms - for lower BPM
-                            prominence=prominence_threshold
-                        )
+                    prominence=prominence_threshold
+                )
                     except:
                         peaks = np.array([])
             
@@ -2625,14 +2625,14 @@ class Dashboard(QWidget):
 
                     # Fallback to ECG test page metric if legacy detector failed
                     if legacy_hr <= 0:
-                        hr_text = ecg_metrics.get('heart_rate') if ecg_metrics else None
-                        if (not hr_text or hr_text in ('00', '--')) and hasattr(self.ecg_test_page, '_last_hr_display'):
-                            try:
-                                last_hr = int(self.ecg_test_page._last_hr_display)
-                                hr_text = str(last_hr) if last_hr > 0 else None
-                            except Exception:
-                                hr_text = None
-                        if hr_text and hr_text not in ('00', '--', '0'):
+                    hr_text = ecg_metrics.get('heart_rate') if ecg_metrics else None
+                    if (not hr_text or hr_text in ('00', '--')) and hasattr(self.ecg_test_page, '_last_hr_display'):
+                        try:
+                            last_hr = int(self.ecg_test_page._last_hr_display)
+                            hr_text = str(last_hr) if last_hr > 0 else None
+                        except Exception:
+                            hr_text = None
+                    if hr_text and hr_text not in ('00', '--', '0'):
                             stabilized_hr = self.stabilize_bpm_value(hr_text)
                         else:
                             stabilized_hr = 0
@@ -3688,9 +3688,9 @@ class Dashboard(QWidget):
 
             # Format elapsed time
             elapsed = max(0, int(self._session_elapsed_seconds))
-            mm = elapsed // 60
-            ss = elapsed % 60
-            time_str = f"{mm:02d}:{ss:02d}"
+                mm = elapsed // 60
+                ss = elapsed % 60
+                time_str = f"{mm:02d}:{ss:02d}"
             
             # Update time on both dashboard and ECG test page for synchronization
             if 'time_elapsed' in self.metric_labels:
