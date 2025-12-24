@@ -5,7 +5,7 @@
   "serial_port": "/dev/cu.usbserial-1440",
   "baud_rate": "115200",
   "printer_average_wave": "off",
-  "filter_ac": "off",
+  "filter_ac": "50",
   "filter_emg": "35",
   "filter_dft": "off",
   "system_beat_vol": "off",

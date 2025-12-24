@@ -434,7 +434,30 @@ class ECGMenu(QGroupBox):
         ]
         for text, handler in self.menu_button_defs:
             btn = QPushButton(self.tr(text))
-            btn.setFixedHeight(36)
+            # Make buttons bigger and fill space better - professional medical UI
+            btn.setFixedHeight(50)
+            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            btn.setStyleSheet("""
+                QPushButton {
+                    font: bold 13pt Arial;
+                    background: white;
+                    color: #2c3e50;
+                    border: 2px solid #e0e0e0;
+                    border-radius: 8px;
+                    padding: 10px;
+                    text-align: center;
+                }
+                QPushButton:hover {
+                    background: #f8f9fa;
+                    border: 2px solid #ff6600;
+                    color: #ff6600;
+                }
+                QPushButton:pressed {
+                    background: #fff0e0;
+                    border: 2px solid #ff6600;
+                    color: #ff6600;
+                }
+            """)
             btn.clicked.connect(handler)
             layout.addWidget(btn)
             self.buttons[text] = btn
@@ -2328,23 +2351,24 @@ class ECGMenu(QGroupBox):
             grid_layout.setSpacing(grid_spacing)
             grid_layout.setContentsMargins(grid_margin, grid_margin, grid_margin, grid_margin)
             
-            # Calculate optimal button size - smaller for small screens
+            # Calculate optimal button size - BIGGER buttons to fill space better
             if is_small_screen:
-                button_width = max(50, min(90, int(margin_size * 2.5)))
-                button_height = max(20, min(28, int(margin_size * 1.0)))
-                radio_font_size = max(8, min(10, int(margin_size * 0.4)))
-                radio_padding = max(3, min(5, int(margin_size * 0.15)))
-                indicator_size = max(8, min(10, int(margin_size * 0.4)))
-                indicator_margin_left = max(4, min(5, int(margin_size * 0.2)))
-                indicator_margin_right = max(5, min(6, int(margin_size * 0.25)))
+                button_width = max(80, min(130, int(margin_size * 4.0)))
+                button_height = max(35, min(45, int(margin_size * 1.5)))
+                radio_font_size = max(11, min(13, int(margin_size * 0.55)))
+                radio_padding = max(8, min(12, int(margin_size * 0.4)))
+                indicator_size = max(12, min(14, int(margin_size * 0.6)))
+                indicator_margin_left = max(6, min(8, int(margin_size * 0.3)))
+                indicator_margin_right = max(8, min(10, int(margin_size * 0.4)))
             else:
-                button_width = max(70, min(120, int(margin_size * 3.5)))
-                button_height = max(25, min(35, int(margin_size * 1.3)))
-                radio_font_size = max(9, int(margin_size * 0.45))
-                radio_padding = max(4, int(margin_size * 0.2))
-                indicator_size = max(10, int(margin_size * 0.5))
-                indicator_margin_left = 6
-                indicator_margin_right = 8
+                # Larger buttons for better visibility and professional look
+                button_width = max(140, min(200, int(margin_size * 6.0)))
+                button_height = max(45, min(60, int(margin_size * 2.0)))
+                radio_font_size = max(13, int(margin_size * 0.65))
+                radio_padding = max(12, int(margin_size * 0.5))
+                indicator_size = max(14, int(margin_size * 0.7))
+                indicator_margin_left = 10
+                indicator_margin_right = 12
             
             for i, (text, val) in enumerate(section_data['options']):
                 btn = QRadioButton(self.tr(text))
@@ -2353,19 +2377,19 @@ class ECGMenu(QGroupBox):
                         font: bold {radio_font_size}pt Arial;
                         color: #2c3e50;
                         background: white;
-                        padding: {radio_padding}px;
-                        border: 1px solid #e0e0e0;
-                        border-radius: {max(4, min(6, int(margin_size * 0.3)))}px;
+                        padding: {radio_padding}px {radio_padding + 5}px;
+                        border: 2px solid #e0e0e0;
+                        border-radius: {max(8, min(10, int(margin_size * 0.5)))}px;
                         min-width: {button_width}px;
-                        max-width: {button_width + 10}px;
                         min-height: {button_height}px;
                     }}
                     QRadioButton:hover {{
-                        border: 2px solid #ffb347;
+                        border: 3px solid #ffb347;
                         background: #fff8f0;
+                        transform: scale(1.02);
                     }}
                     QRadioButton:checked {{
-                        border: 2px solid #ff6600;
+                        border: 3px solid #ff6600;
                         background: #fff0e0;
                         color: #ff6600;
                         font-weight: bold;
@@ -2374,18 +2398,18 @@ class ECGMenu(QGroupBox):
                         width: {indicator_size}px;
                         height: {indicator_size}px;
                         border: 2px solid #e0e0e0;
-                        border-radius: {max(4, min(5, int(margin_size * 0.25)))}px;
+                        border-radius: {max(7, min(8, int(margin_size * 0.4)))}px;
                         background: white;
                         margin-left: {indicator_margin_left}px;
                         margin-right: {indicator_margin_right}px;
                     }}
                     QRadioButton::indicator:checked {{
-                        border: 1px solid #ff6600;
+                        border: 2px solid #ff6600;
                         background: #ff6600;
                     }}
                 """)
-                # Set size policy for better responsive behavior
-                btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+                # Set size policy to expand and fill space better
+                btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
                 
                 # Set checked state if variable exists
                 if 'variable' in section_data and section_data['variable']:
@@ -2403,9 +2427,9 @@ class ECGMenu(QGroupBox):
                     btn.toggled.connect(lambda checked, v=val, var=section_data['variable']: 
                                      var.update({'value': v}) if checked else None)
                 
-                # Arrange in grid (2 columns for better space usage)
-                row, col = divmod(i, 2)
-                grid_layout.addWidget(btn, row, col)
+                # Arrange in grid - use single column for larger buttons to fill space better
+                # This makes buttons bigger and more prominent
+                grid_layout.addWidget(btn, i, 0)
             
             content_layout.addWidget(group_box)
 
