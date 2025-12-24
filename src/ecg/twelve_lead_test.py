@@ -7722,8 +7722,11 @@ class ECGTestPage(QWidget):
                             raw_data = self.data[i]
                             if len(raw_data) > samples_to_show:
                                 data_slice = raw_data[-samples_to_show:]
+                                actual_seconds_to_show = seconds_to_show  # Use full window when we have enough data
                             else:
                                 data_slice = raw_data
+                                # When data is less than target window, use actual data duration to prevent stretching
+                                actual_seconds_to_show = len(raw_data) / sampling_rate if sampling_rate > 0 else seconds_to_show
                             
                             # 🫀 DISPLAY: Low-frequency baseline anchor (removes respiration from baseline)
                             # Extract very-low-frequency baseline (< 0.3 Hz) to prevent baseline from "breathing"
@@ -7815,7 +7818,9 @@ class ECGTestPage(QWidget):
                             
                             n = len(scaled_data)
                             # Right-to-left scrolling: newest data on right (0), oldest on left (negative)
-                            # Time axis: newest data = 0 (right side), oldest = -seconds_to_show (left side)
+                            # Time axis: Always use seconds_to_show to match locked X-axis range
+                            # This prevents compression when data accumulates past samples_to_show
+                            # When data is less than target, it will fill from right (newest at 0) to left
                             time_axis = np.linspace(-seconds_to_show, 0.0, n)
                             
                             # Smooth data transitions for smooth wave entry (prevent jittery/breaking)
@@ -7828,8 +7833,8 @@ class ECGTestPage(QWidget):
                             except Exception:
                                 pass  # Continue with unsmoothed data if smoothing fails
                             
-                            # STABLE X-AXIS: Lock X-axis range to prevent jumping
-                            # Only update X-axis if it hasn't been set or if seconds_to_show changed significantly
+                            # STABLE X-AXIS: Lock X-axis range to prevent jumping and compression
+                            # Set X-axis immediately to target range to prevent initial stretching
                             try:
                                 vb = self.plot_widgets[i].getViewBox()
                                 if vb is not None:
@@ -7837,10 +7842,11 @@ class ECGTestPage(QWidget):
                                     if not hasattr(self, '_stable_x_ranges'):
                                         self._stable_x_ranges = {}
                                     
-                                    # Check if X-axis range needs updating (only if seconds_to_show changed significantly)
+                                    # Always use target seconds_to_show for X-axis range (prevents compression)
+                                    # This ensures consistent scale from the start, even if data is still accumulating
                                     x_range_key = f"{i}_{seconds_to_show:.1f}"
                                     if x_range_key not in self._stable_x_ranges:
-                                        # Set stable X-axis range (lock it to prevent jumping)
+                                        # Set stable X-axis range immediately to target window (prevents jitter/compression)
                                         stable_x_min = -seconds_to_show
                                         stable_x_max = 0.0
                                         vb.setRange(xRange=(stable_x_min, stable_x_max), padding=0)
@@ -7848,7 +7854,7 @@ class ECGTestPage(QWidget):
                                         vb.setLimits(xMin=stable_x_min, xMax=stable_x_max)
                                         self._stable_x_ranges[x_range_key] = (stable_x_min, stable_x_max)
                                     else:
-                                        # Use existing stable range (don't change it)
+                                        # Use existing stable range (don't change it) - prevents compression at 10 seconds
                                         stable_range = self._stable_x_ranges[x_range_key]
                                         vb.setRange(xRange=stable_range, padding=0)
                             except Exception:

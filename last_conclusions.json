@@ -1,10 +1,14 @@
 {
-  "timestamp": "2025-12-24 14:44:07",
+  "timestamp": "2025-12-24 15:05:12",
   "findings": [
-    "Normal heart rate",
-    "Normal PR interval",
-    "Normal QRS duration",
+    "Bradycardia detected",
+    "Prolonged PR interval",
+    "Borderline QRS duration",
     "Good heart rate variability"
   ],
-  "recommendations": []
+  "recommendations": [
+    "May be normal for athletes, monitor symptoms",
+    "Medical evaluation recommended for AV conduction assessment",
+    "Monitor for progression, follow-up ECG if symptoms develop"
+  ]
 }
