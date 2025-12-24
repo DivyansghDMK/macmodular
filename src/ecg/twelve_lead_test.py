@@ -1696,25 +1696,25 @@ class ECGTestPage(QWidget):
             # Create waveform line with thicker pen (medical monitor style)
             data_line = plot_widget.plot(pen=pg.mkPen(color=lead_color, width=2.0))  # Increased from 0.7 to 2.0
             
-            # Add beautiful lead name label in center (use lead color)
-            # Create text item with large, bold font and semi-transparent for elegant look
+            # Add lead name label in top right corner (matching first image UI)
+            # Create text item with lead color
             lead_text = pg.TextItem(
                 text=lead_name,
                 color=lead_color,  # Use lead-specific color
-                anchor=(0.5, 0.5),  # Center anchor
+                anchor=(1.0, 0.0),  # Top-right anchor (right=1.0, top=0.0)
                 border=None,
                 fill=None
             )
-            # Set large, bold font for beautiful heat map style display
-            font = QFont('Arial', 32, QFont.Bold)  # Large font size for visibility (heat map style)
+            # Set readable font size for top-right corner label
+            font = QFont('Arial', 14, QFont.Bold)  # Smaller font for corner label
             lead_text.setFont(font)
-            # Set opacity for elegant semi-transparent look
-            lead_text.setOpacity(0.6)  # Semi-transparent for heat map aesthetic
+            # Fully opaque for clear visibility
+            lead_text.setOpacity(1.0)  # Fully visible
             # Add to plot
             plot_widget.addItem(lead_text)
-            # Position at center of plot (will be updated dynamically in update_plots)
-            # Initial position: middle of X range (-5 for 10 sec window), center Y (0)
-            lead_text.setPos(-5.0, 0.0)
+            # Position at top-right corner (will be updated dynamically in update_plots)
+            # Initial position: right edge (0 for right-to-left scrolling), top Y
+            lead_text.setPos(0.0, 0.0)
             
             # Store text item for potential updates
             if not hasattr(self, 'lead_text_items'):
@@ -7523,17 +7523,17 @@ class ECGTestPage(QWidget):
                             except Exception:
                                 pass
                             
-                            # Update lead text position to center of plot (demo mode)
+                            # Update lead text position to top-right corner (demo mode)
                             if hasattr(self, 'lead_text_items') and i < len(self.lead_text_items):
                                 try:
-                                    # Get current Y range for centering
+                                    # Get current Y range for top-right positioning
                                     vb = self.plot_widgets[i].getViewBox()
                                     if vb:
                                         y_range = vb.viewRange()[1]
-                                        y_center = (y_range[0] + y_range[1]) / 2.0
-                                        # X center: middle of time axis
-                                        x_center = (time_axis_demo[0] + time_axis_demo[-1]) / 2.0
-                                        self.lead_text_items[i].setPos(x_center, y_center)
+                                        y_top = y_range[1]  # Top of Y range
+                                        # X right: right edge of time axis (0 for right-to-left scrolling)
+                                        x_right = time_axis_demo[-1]  # Rightmost X position (0.0)
+                                        self.lead_text_items[i].setPos(x_right, y_top)
                                 except Exception:
                                     pass  # Ignore errors in text positioning
                     except Exception as e:
@@ -7858,17 +7858,17 @@ class ECGTestPage(QWidget):
                             self.data_lines[i].setData(time_axis, scaled_data)
                             self.update_plot_y_range_adaptive(i, signal_source, data_override=scaled_data)
                             
-                            # Update lead text position to center of plot (serial/hardware mode)
+                            # Update lead text position to top-right corner (serial/hardware mode)
                             if hasattr(self, 'lead_text_items') and i < len(self.lead_text_items):
                                 try:
-                                    # Get current Y range for centering
+                                    # Get current Y range for top-right positioning
                                     vb = self.plot_widgets[i].getViewBox()
                                     if vb:
                                         y_range = vb.viewRange()[1]
-                                        y_center = (y_range[0] + y_range[1]) / 2.0
-                                        # X center: middle of time axis
-                                        x_center = (time_axis[0] + time_axis[-1]) / 2.0
-                                        self.lead_text_items[i].setPos(x_center, y_center)
+                                        y_top = y_range[1]  # Top of Y range
+                                        # X right: right edge of time axis (0 for right-to-left scrolling)
+                                        x_right = time_axis[-1]  # Rightmost X position (0.0)
+                                        self.lead_text_items[i].setPos(x_right, y_top)
                                 except Exception:
                                     pass  # Ignore errors in text positioning
 
