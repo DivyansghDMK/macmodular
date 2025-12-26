@@ -10,6 +10,7 @@ except ImportError:
     print("⚠️ QSound not available - heartbeat sound will be disabled")
     QSound = None
 import sys
+import platform
 import numpy as np
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -1560,7 +1561,11 @@ class Dashboard(QWidget):
             
             # CRITICAL: Get actual sampling rate from ECG test page
             # Use same fallback as ECG test page (250 Hz) for consistency
-            fs = 250.0  # Base fallback (matches ECG test page)
+            import platform
+            is_windows = platform.system() == 'Windows'
+            platform_tag = "[Windows]" if is_windows else "[macOS/Linux]"
+            
+            fs = 250.0  # Base fallback (matches ECG test page - unified across platforms)
             if sampling_rate and sampling_rate > 10:
                 fs = float(sampling_rate)
             elif hasattr(self, 'ecg_test_page') and self.ecg_test_page:
@@ -1573,12 +1578,23 @@ class Dashboard(QWidget):
                 except Exception as e:
                     pass
             
-            # Debug output for Windows troubleshooting (print first few times to help diagnose)
-            if not hasattr(self, '_bpm_debug_count'):
-                self._bpm_debug_count = 0
-            self._bpm_debug_count += 1
-            if self._bpm_debug_count <= 3:  # Print first 3 times
-                print(f"🔍 BPM Calculation - Sampling rate: {fs} Hz, Signal length: {len(ecg_signal)} samples")
+            # Enhanced debugging with platform detection
+            if not hasattr(self, '_calc_count'):
+                self._calc_count = 0
+            self._calc_count += 1
+            if self._calc_count <= 5:  # First 5 calculations (increased from 3)
+                print(f"🔍 {platform_tag} BPM Calculation - Sampling rate: {fs:.1f} Hz, Signal length: {len(ecg_signal)} samples")
+            
+            # Windows-specific warnings
+            if is_windows and fs == 250.0:
+                if self._calc_count <= 5:
+                    print(f"⚠️ {platform_tag} Sampling rate detection failed, using fallback 250.0 Hz")
+            
+            # Validation
+            if fs <= 0 or not np.isfinite(fs):
+                if is_windows:
+                    print(f"⚠️ {platform_tag} Invalid sampling rate detected: {fs}, using fallback 250.0 Hz")
+                fs = 250.0  # Fallback
             
             # Apply bandpass filter to enhance R-peaks (0.5-40 Hz)
             nyquist = fs / 2

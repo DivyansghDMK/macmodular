@@ -1,5 +1,6 @@
 import sys
 import time
+import platform
 import numpy as np
 from pyparsing import line
 import logging
@@ -332,25 +333,45 @@ class SerialStreamReader:
         self.running = False
         print(f"📊 Total data packets received: {self.data_count}")
 
-    def read_packets(self, max_packets: int = 50) -> List[Dict[str, int]]:
-        """Read and parse ECG packets from serial stream"""
+    def read_packets(self, max_packets: int = 100) -> List[Dict[str, int]]:
+        """Read and parse ECG packets from serial stream
+        
+        At 500 Hz, hardware sends 500 packets/second = ~16.67 packets per 33ms timer interval.
+        We read up to max_packets to prevent buffer overflow and packet loss.
+        """
         if not self.running:
             return []
             
         out: List[Dict[str, int]] = []
         
         try:
-            chunk = self.ser.read(1024)
+            # Read larger chunks to prevent buffer overflow at 500 Hz
+            # At 500 Hz with 22-byte packets = 11,000 bytes/second
+            # Read up to 4096 bytes per call to catch up quickly
+            chunk = self.ser.read(4096)  # Increased from default (usually 1024)
             if chunk:
                 self.buf.extend(chunk)
 
-            # Extract packets
-            while len(out) < max_packets:
+            # Extract packets - process ALL available packets to prevent buffer overflow
+            # At 500 Hz, we need to process packets quickly to avoid accumulation
+            # Read ALL packets in buffer, not just max_packets, to prevent overflow
+            max_iterations = max_packets * 3  # Allow catching up if we fell behind
+            iteration = 0
+            while iteration < max_iterations:
+                iteration += 1
                 start_idx = self.buf.find(bytes([START_BYTE]))
                 if start_idx == -1:
-                    self.buf.clear()
+                    # No start byte found - clear buffer if it's getting too large (>100KB)
+                    if len(self.buf) > 100000:
+                        print(f"⚠️ Serial buffer overflow risk: {len(self.buf)} bytes, clearing buffer")
+                        self.buf.clear()
                     break
+                if start_idx > 10000:
+                    # Skip too much garbage data before start byte
+                    del self.buf[:start_idx]
+                    continue
                 if len(self.buf) - start_idx < PACKET_SIZE:
+                    # Not enough data for a complete packet - keep what we have
                     if start_idx > 0:
                         del self.buf[:start_idx]
                     break
@@ -364,14 +385,14 @@ class SerialStreamReader:
                 parsed = parse_packet(candidate)
                 if parsed:
                     self.data_count += 1
-                    print(f"📡 [Packet #{self.data_count}] Received valid packet with {len(parsed)} leads")
-                    # Log each lead value as it is parsed
-                    for name, val in parsed.items():
-                        try:
-                            print(f"Serial data - Lead {name}: value={val}")
-                        except Exception:
-                            pass
+                    # Only log every 100th packet to reduce console spam
+                    if self.data_count % 100 == 0:
+                        print(f"📡 [Packet #{self.data_count}] Received valid packet with {len(parsed)} leads")
                     out.append(parsed)
+            
+            # Warn if buffer is accumulating too much data (indicates we're falling behind)
+            if len(self.buf) > 50000:  # >50KB buffer indicates we're not reading fast enough
+                print(f"⚠️ Serial buffer accumulation: {len(self.buf)} bytes - may indicate packet loss")
                     
         except Exception as e:
             self.error_count += 1
@@ -2244,16 +2265,52 @@ class ECGTestPage(QWidget):
                 print("❌ Invalid values (NaN/Inf) in lead data")
                 return 60
 
-            # Use measured sampling rate if available; default to 250 Hz
-            fs = 250
+            # Use measured sampling rate if available; default to 250 Hz (unified fallback)
+            # CRITICAL: If detection works, use detected rate (should be 500 Hz for hardware)
+            # If detection fails, use 250 Hz fallback (consistent across platforms)
+            import platform
+            is_windows = platform.system() == 'Windows'
+            platform_tag = "[Windows]" if is_windows else "[macOS/Linux]"
+            
+            fs = 250.0  # Standard fallback for all platforms
             try:
                 if hasattr(self, 'sampler') and hasattr(self.sampler, 'sampling_rate') and self.sampler.sampling_rate > 10:
-                    fs = float(self.sampler.sampling_rate)
+                    detected_rate = self.sampler.sampling_rate
+                    if detected_rate > 10 and np.isfinite(detected_rate):
+                        fs = float(detected_rate)
+                        # Debug: Log sampling rate detection (first few times only)
+                        if not hasattr(self, '_fs_debug_count'):
+                            self._fs_debug_count = 0
+                        self._fs_debug_count += 1
+                        if self._fs_debug_count <= 3:
+                            print(f"🔍 {platform_tag} Heart rate calculation using detected sampling rate: {fs:.1f} Hz")
+                    else:
+                        if is_windows:
+                            print(f"⚠️ {platform_tag} Invalid detected sampling rate: {detected_rate}, using fallback 250.0 Hz")
                 elif hasattr(self, 'sampling_rate') and self.sampling_rate > 10:
                     fs = float(self.sampling_rate)
+                    if not hasattr(self, '_fs_debug_count'):
+                        self._fs_debug_count = 0
+                    self._fs_debug_count += 1
+                    if self._fs_debug_count <= 3:
+                        print(f"🔍 {platform_tag} Heart rate calculation using sampling rate: {fs:.1f} Hz (from self.sampling_rate)")
+                else:
+                    if is_windows:
+                        print(f"⚠️ {platform_tag} Sampling rate not available, using fallback 250.0 Hz")
             except Exception as e:
                 print(f"❌ Error getting sampling rate: {e}")
-                fs = 250
+                fs = 250.0  # Standard fallback
+                if not hasattr(self, '_fs_debug_count'):
+                    self._fs_debug_count = 0
+                self._fs_debug_count += 1
+                if self._fs_debug_count <= 3:
+                    print(f"⚠️ {platform_tag} Using default sampling rate: {fs} Hz (sampling rate detection failed)")
+            
+            # Validation
+            if fs <= 0 or not np.isfinite(fs):
+                if is_windows:
+                    print(f"⚠️ {platform_tag} Invalid sampling rate detected: {fs}, using fallback 250.0 Hz")
+                fs = 250.0  # Fallback
 
             # Apply bandpass filter to enhance R-peaks (0.5-40 Hz)
             try:
@@ -2392,6 +2449,13 @@ class ECGTestPage(QWidget):
                 heart_rate = 60000 / median_rr
                 # Extended: stable 10–300 BPM range
                 heart_rate = max(10, min(300, heart_rate))
+                
+                # Debug: Log calculated BPM with sampling rate (first few times only)
+                if not hasattr(self, '_bpm_calc_debug_count'):
+                    self._bpm_calc_debug_count = 0
+                self._bpm_calc_debug_count += 1
+                if self._bpm_calc_debug_count <= 5:
+                    print(f"💓 BPM Calculation: {heart_rate:.1f} BPM (sampling_rate={fs:.1f} Hz, median_RR={median_rr:.1f} ms, peaks={len(peaks)})")
                 # Extra guard: avoid falsely reporting very high BPM when real rate is very low
                 try:
                     window_sec = len(lead_data) / float(fs)
@@ -2459,9 +2523,9 @@ class ECGTestPage(QWidget):
             if np.all(lead_ii_data == 0) or np.std(lead_ii_data) < 0.1:
                 return amplitudes
             
-            # Get sampling rate
-            fs = 250
-            if hasattr(self, 'sampler') and hasattr(self.sampler, 'sampling_rate'):
+            # Get sampling rate - default to 250 Hz (unified fallback)
+            fs = 250.0
+            if hasattr(self, 'sampler') and hasattr(self.sampler, 'sampling_rate') and self.sampler.sampling_rate > 10:
                 fs = float(self.sampler.sampling_rate)
             
             # Filter signal
@@ -7298,7 +7362,15 @@ class ECGTestPage(QWidget):
 
             # SERIAL branch - NEW PACKET-BASED PARSING
             packets_processed = 0
-            max_packets = 50  # Read up to 50 packets per update cycle
+            # At 500 Hz with 33ms timer interval, we need to read ~17 packets per cycle
+            # But to prevent buffer overflow, read up to 100 packets per cycle (allows catching up)
+            max_packets = 100  # Increased to prevent packet loss at 500 Hz
+            
+            # Track packet loss detection
+            if not hasattr(self, '_last_packet_count'):
+                self._last_packet_count = 0
+                self._last_packet_time = time.time()
+                self._expected_packets_per_second = 500  # Hardware sends at 500 Hz
             
             # Check if we're using the new packet-based reader
             is_packet_reader = isinstance(self.serial_reader, SerialStreamReader)
@@ -7307,6 +7379,24 @@ class ECGTestPage(QWidget):
                 # NEW: Use packet-based reading
                 try:
                     packets = self.serial_reader.read_packets(max_packets=max_packets)
+                    
+                    # Detect packet loss
+                    current_time = time.time()
+                    if hasattr(self.serial_reader, 'data_count'):
+                        current_packet_count = self.serial_reader.data_count
+                        time_elapsed = current_time - self._last_packet_time
+                        
+                        if time_elapsed >= 1.0:  # Check every second
+                            packets_received = current_packet_count - self._last_packet_count
+                            expected_packets = int(self._expected_packets_per_second * time_elapsed)
+                            packet_loss = max(0, expected_packets - packets_received)
+                            packet_loss_percent = (packet_loss / expected_packets * 100) if expected_packets > 0 else 0
+                            
+                            if packet_loss_percent > 5.0:  # More than 5% packet loss
+                                print(f"⚠️ Packet loss detected: {packet_loss}/{expected_packets} packets ({packet_loss_percent:.1f}% loss) - This may cause waveform deformation")
+                            
+                            self._last_packet_count = current_packet_count
+                            self._last_packet_time = current_time
                     
                     for packet in packets:
                         # Packet contains all 12 leads: I, II, III, aVR, aVL, aVF, V1, V2, V3, V4, V5, V6
@@ -7330,8 +7420,21 @@ class ECGTestPage(QWidget):
                         try:
                             if hasattr(self, 'sampler'):
                                 sampling_rate = self.sampler.add_sample()
-                                if sampling_rate > 0 and hasattr(self, 'metric_labels') and 'sampling_rate' in self.metric_labels:
-                                    self.metric_labels['sampling_rate'].setText(f"{sampling_rate:.1f} Hz")
+                                if sampling_rate > 0:
+                                    # Debug: Log detected sampling rate (first few times only)
+                                    if not hasattr(self, '_sampling_rate_log_count'):
+                                        self._sampling_rate_log_count = 0
+                                    self._sampling_rate_log_count += 1
+                                    if self._sampling_rate_log_count <= 3:
+                                        import sys
+                                        platform = "Windows" if sys.platform.startswith('win') else "macOS"
+                                        print(f"✅ [{platform}] Hardware sampling rate detected: {sampling_rate:.1f} Hz")
+                                    
+                                    if hasattr(self, 'metric_labels') and 'sampling_rate' in self.metric_labels:
+                                        self.metric_labels['sampling_rate'].setText(f"{sampling_rate:.1f} Hz")
+                                    
+                                    # Update self.sampling_rate for heart rate calculation
+                                    self.sampling_rate = sampling_rate
                         except Exception as e:
                             print(f"❌ Error updating sampling rate: {e}")
                         
