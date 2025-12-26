@@ -1,65 +1,5 @@
 [
   {
-    "timestamp": "2025-12-04T11:11:00.554873",
-    "message": "Serial communication error: read failed: [Errno 6] Device not configured",
-    "category": "SERIAL_ERROR",
-    "error_count": 73,
-    "session_duration": "0:14:43.017781",
-    "exception_type": "SerialException",
-    "exception_message": "read failed: [Errno 6] Device not configured",
-    "traceback": "Traceback (most recent call last):\n  File \"/Users/deckmount/Downloads/modularecg-main/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 575, in read\n    buf = os.read(self.fd, size - len(read))\nOSError: [Errno 6] Device not configured\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/deckmount/Downloads/modularecg-main/src/ecg/twelve_lead_test.py\", line 548, in read_value\n    line_raw = self.ser.readline()\n  File \"/Users/deckmount/Downloads/modularecg-main/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 581, in read\n    raise SerialException('read failed: {}'.format(e))\nserial.serialutil.SerialException: read failed: [Errno 6] Device not configured\n"
-  },
-  {
-    "timestamp": "2025-12-04T11:11:00.603930",
-    "message": "Serial communication error: read failed: [Errno 6] Device not configured",
-    "category": "SERIAL_ERROR",
-    "error_count": 74,
-    "session_duration": "0:14:43.066835",
-    "exception_type": "SerialException",
-    "exception_message": "read failed: [Errno 6] Device not configured",
-    "traceback": "Traceback (most recent call last):\n  File \"/Users/deckmount/Downloads/modularecg-main/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 575, in read\n    buf = os.read(self.fd, size - len(read))\nOSError: [Errno 6] Device not configured\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/deckmount/Downloads/modularecg-main/src/ecg/twelve_lead_test.py\", line 548, in read_value\n    line_raw = self.ser.readline()\n  File \"/Users/deckmount/Downloads/modularecg-main/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 581, in read\n    raise SerialException('read failed: {}'.format(e))\nserial.serialutil.SerialException: read failed: [Errno 6] Device not configured\n"
-  },
-  {
-    "timestamp": "2025-12-04T11:11:00.654572",
-    "message": "Serial communication error: read failed: [Errno 6] Device not configured",
-    "category": "SERIAL_ERROR",
-    "error_count": 75,
-    "session_duration": "0:14:43.117478",
-    "exception_type": "SerialException",
-    "exception_message": "read failed: [Errno 6] Device not configured",
-    "traceback": "Traceback (most recent call last):\n  File \"/Users/deckmount/Downloads/modularecg-main/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 575, in read\n    buf = os.read(self.fd, size - len(read))\nOSError: [Errno 6] Device not configured\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/deckmount/Downloads/modularecg-main/src/ecg/twelve_lead_test.py\", line 548, in read_value\n    line_raw = self.ser.readline()\n  File \"/Users/deckmount/Downloads/modularecg-main/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 581, in read\n    raise SerialException('read failed: {}'.format(e))\nserial.serialutil.SerialException: read failed: [Errno 6] Device not configured\n"
-  },
-  {
-    "timestamp": "2025-12-04T11:11:00.703915",
-    "message": "Serial communication error: read failed: [Errno 6] Device not configured",
-    "category": "SERIAL_ERROR",
-    "error_count": 76,
-    "session_duration": "0:14:43.166822",
-    "exception_type": "SerialException",
-    "exception_message": "read failed: [Errno 6] Device not configured",
-    "traceback": "Traceback (most recent call last):\n  File \"/Users/deckmount/Downloads/modularecg-main/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 575, in read\n    buf = os.read(self.fd, size - len(read))\nOSError: [Errno 6] Device not configured\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/deckmount/Downloads/modularecg-main/src/ecg/twelve_lead_test.py\", line 548, in read_value\n    line_raw = self.ser.readline()\n  File \"/Users/deckmount/Downloads/modularecg-main/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 581, in read\n    raise SerialException('read failed: {}'.format(e))\nserial.serialutil.SerialException: read failed: [Errno 6] Device not configured\n"
-  },
-  {
-    "timestamp": "2025-12-04T11:11:00.755800",
-    "message": "Serial communication error: read failed: [Errno 6] Device not configured",
-    "category": "SERIAL_ERROR",
-    "error_count": 77,
-    "session_duration": "0:14:43.218707",
-    "exception_type": "SerialException",
-    "exception_message": "read failed: [Errno 6] Device not configured",
-    "traceback": "Traceback (most recent call last):\n  File \"/Users/deckmount/Downloads/modularecg-main/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 575, in read\n    buf = os.read(self.fd, size - len(read))\nOSError: [Errno 6] Device not configured\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/deckmount/Downloads/modularecg-main/src/ecg/twelve_lead_test.py\", line 548, in read_value\n    line_raw = self.ser.readline()\n  File \"/Users/deckmount/Downloads/modularecg-main/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 581, in read\n    raise SerialException('read failed: {}'.format(e))\nserial.serialutil.SerialException: read failed: [Errno 6] Device not configured\n"
-  },
-  {
-    "timestamp": "2025-12-04T11:11:00.803890",
-    "message": "Serial communication error: read failed: [Errno 6] Device not configured",
-    "category": "SERIAL_ERROR",
-    "error_count": 78,
-    "session_duration": "0:14:43.266806",
-    "exception_type": "SerialException",
-    "exception_message": "read failed: [Errno 6] Device not configured",
-    "traceback": "Traceback (most recent call last):\n  File \"/Users/deckmount/Downloads/modularecg-main/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 575, in read\n    buf = os.read(self.fd, size - len(read))\nOSError: [Errno 6] Device not configured\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/deckmount/Downloads/modularecg-main/src/ecg/twelve_lead_test.py\", line 548, in read_value\n    line_raw = self.ser.readline()\n  File \"/Users/deckmount/Downloads/modularecg-main/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 581, in read\n    raise SerialException('read failed: {}'.format(e))\nserial.serialutil.SerialException: read failed: [Errno 6] Device not configured\n"
-  },
-  {
     "timestamp": "2025-12-04T11:11:00.863514",
     "message": "Serial communication error: read failed: [Errno 6] Device not configured",
     "category": "SERIAL_ERROR",
@@ -995,6 +935,66 @@
     "category": "SERIAL_ERROR",
     "error_count": 1,
     "session_duration": "0:02:19.129225",
+    "exception_type": "SerialException",
+    "exception_message": "read failed: [Errno 6] Device not configured",
+    "traceback": "Traceback (most recent call last):\n  File \"/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 575, in read\n    buf = os.read(self.fd, size - len(read))\nOSError: [Errno 6] Device not configured\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/src/ecg/twelve_lead_test.py\", line 343, in read_packets\n    chunk = self.ser.read(1024)\n  File \"/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 581, in read\n    raise SerialException('read failed: {}'.format(e))\nserial.serialutil.SerialException: read failed: [Errno 6] Device not configured\n"
+  },
+  {
+    "timestamp": "2025-12-26T12:43:11.541038",
+    "message": "Packet parsing error: read failed: [Errno 6] Device not configured",
+    "category": "SERIAL_ERROR",
+    "error_count": 1,
+    "session_duration": "0:01:10.083877",
+    "exception_type": "SerialException",
+    "exception_message": "read failed: [Errno 6] Device not configured",
+    "traceback": "Traceback (most recent call last):\n  File \"/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 575, in read\n    buf = os.read(self.fd, size - len(read))\nOSError: [Errno 6] Device not configured\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/src/ecg/twelve_lead_test.py\", line 343, in read_packets\n    chunk = self.ser.read(1024)\n  File \"/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 581, in read\n    raise SerialException('read failed: {}'.format(e))\nserial.serialutil.SerialException: read failed: [Errno 6] Device not configured\n"
+  },
+  {
+    "timestamp": "2025-12-26T12:47:57.295175",
+    "message": "Packet parsing error: read failed: [Errno 6] Device not configured",
+    "category": "SERIAL_ERROR",
+    "error_count": 1,
+    "session_duration": "0:04:16.524876",
+    "exception_type": "SerialException",
+    "exception_message": "read failed: [Errno 6] Device not configured",
+    "traceback": "Traceback (most recent call last):\n  File \"/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 575, in read\n    buf = os.read(self.fd, size - len(read))\nOSError: [Errno 6] Device not configured\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/src/ecg/twelve_lead_test.py\", line 343, in read_packets\n    chunk = self.ser.read(1024)\n  File \"/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 581, in read\n    raise SerialException('read failed: {}'.format(e))\nserial.serialutil.SerialException: read failed: [Errno 6] Device not configured\n"
+  },
+  {
+    "timestamp": "2025-12-26T12:59:20.009575",
+    "message": "Packet parsing error: read failed: [Errno 6] Device not configured",
+    "category": "SERIAL_ERROR",
+    "error_count": 1,
+    "session_duration": "0:04:37.939784",
+    "exception_type": "SerialException",
+    "exception_message": "read failed: [Errno 6] Device not configured",
+    "traceback": "Traceback (most recent call last):\n  File \"/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 575, in read\n    buf = os.read(self.fd, size - len(read))\nOSError: [Errno 6] Device not configured\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/src/ecg/twelve_lead_test.py\", line 343, in read_packets\n    chunk = self.ser.read(1024)\n  File \"/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 581, in read\n    raise SerialException('read failed: {}'.format(e))\nserial.serialutil.SerialException: read failed: [Errno 6] Device not configured\n"
+  },
+  {
+    "timestamp": "2025-12-26T13:38:41.506427",
+    "message": "Packet parsing error: read failed: [Errno 6] Device not configured",
+    "category": "SERIAL_ERROR",
+    "error_count": 2,
+    "session_duration": "0:43:59.436658",
+    "exception_type": "SerialException",
+    "exception_message": "read failed: [Errno 6] Device not configured",
+    "traceback": "Traceback (most recent call last):\n  File \"/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 575, in read\n    buf = os.read(self.fd, size - len(read))\nOSError: [Errno 6] Device not configured\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/src/ecg/twelve_lead_test.py\", line 343, in read_packets\n    chunk = self.ser.read(1024)\n  File \"/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 581, in read\n    raise SerialException('read failed: {}'.format(e))\nserial.serialutil.SerialException: read failed: [Errno 6] Device not configured\n"
+  },
+  {
+    "timestamp": "2025-12-26T13:49:05.682583",
+    "message": "Packet parsing error: read failed: [Errno 6] Device not configured",
+    "category": "SERIAL_ERROR",
+    "error_count": 3,
+    "session_duration": "0:54:23.612792",
+    "exception_type": "SerialException",
+    "exception_message": "read failed: [Errno 6] Device not configured",
+    "traceback": "Traceback (most recent call last):\n  File \"/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 575, in read\n    buf = os.read(self.fd, size - len(read))\nOSError: [Errno 6] Device not configured\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/src/ecg/twelve_lead_test.py\", line 343, in read_packets\n    chunk = self.ser.read(1024)\n  File \"/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 581, in read\n    raise SerialException('read failed: {}'.format(e))\nserial.serialutil.SerialException: read failed: [Errno 6] Device not configured\n"
+  },
+  {
+    "timestamp": "2025-12-26T14:11:16.670046",
+    "message": "Packet parsing error: read failed: [Errno 6] Device not configured",
+    "category": "SERIAL_ERROR",
+    "error_count": 1,
+    "session_duration": "0:07:49.553599",
     "exception_type": "SerialException",
     "exception_message": "read failed: [Errno 6] Device not configured",
     "traceback": "Traceback (most recent call last):\n  File \"/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 575, in read\n    buf = os.read(self.fd, size - len(read))\nOSError: [Errno 6] Device not configured\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/src/ecg/twelve_lead_test.py\", line 343, in read_packets\n    chunk = self.ser.read(1024)\n  File \"/Users/deckmount/Downloads/19_noc code  duplicate/modularecg/.venv/lib/python3.13/site-packages/serial/serialposix.py\", line 581, in read\n    raise SerialException('read failed: {}'.format(e))\nserial.serialutil.SerialException: read failed: [Errno 6] Device not configured\n"

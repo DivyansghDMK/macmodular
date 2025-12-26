@@ -1595,16 +1595,19 @@ class Dashboard(QWidget):
             # Run 3 detection strategies
             detection_results = []
             
-            # Strategy 1: Conservative (best for 40-120 BPM)
+            # Strategy 1: Conservative (best for 10-120 BPM)
+            # Distance set to minimum RR for highest BPM in range (120 BPM = 500ms)
+            # RR interval filtering (200-6000ms) will handle the full 10-300 BPM range
             peaks_conservative, _ = find_peaks(
                 filtered_signal,
                 height=height_threshold,
-                distance=int(0.5 * fs),  # 400ms - wider distance for low BPM
+                distance=int(0.4 * fs),  # 400ms - prevents false peaks, allows 10-300 BPM via RR filtering
                 prominence=prominence_threshold
             )
             if len(peaks_conservative) >= 2:
                 rr_cons = np.diff(peaks_conservative) * (1000 / fs)
-                valid_cons = rr_cons[(rr_cons >= 200) & (rr_cons <= 2000)]
+                # Accept RR intervals from 200–6000 ms (300–10 BPM) - changed from 2000 to 6000 to allow 10 BPM
+                valid_cons = rr_cons[(rr_cons >= 200) & (rr_cons <= 6000)]
                 if len(valid_cons) > 0:
                     bpm_cons = 60000 / np.median(valid_cons)
                     std_cons = np.std(valid_cons)
@@ -1619,7 +1622,8 @@ class Dashboard(QWidget):
             )
             if len(peaks_normal) >= 2:
                 rr_norm = np.diff(peaks_normal) * (1000 / fs)
-                valid_norm = rr_norm[(rr_norm >= 200) & (rr_norm <= 2000)]
+                # Accept RR intervals from 200–6000 ms (300–10 BPM) - changed from 2000 to 6000 to allow 10 BPM
+                valid_norm = rr_norm[(rr_norm >= 200) & (rr_norm <= 6000)]
                 if len(valid_norm) > 0:
                     bpm_norm = 60000 / np.median(valid_norm)
                     std_norm = np.std(valid_norm)
@@ -1634,7 +1638,8 @@ class Dashboard(QWidget):
             )
             if len(peaks_tight) >= 2:
                 rr_tight = np.diff(peaks_tight) * (1000 / fs)
-                valid_tight = rr_tight[(rr_tight >= 200) & (rr_tight <= 2000)]
+                # Accept RR intervals from 200–6000 ms (300–10 BPM) - changed from 2000 to 6000 to allow 10 BPM
+                valid_tight = rr_tight[(rr_tight >= 200) & (rr_tight <= 6000)]
                 if len(valid_tight) > 0:
                     bpm_tight = 60000 / np.median(valid_tight)
                     std_tight = np.std(valid_tight)
@@ -1646,11 +1651,11 @@ class Dashboard(QWidget):
                 detection_results.sort(key=lambda x: x[3])  # Sort by std
                 best_method, peaks, best_bpm, best_std = detection_results[0]
             else:
-                # Fallback
+                # Fallback - use conservative distance to handle low BPM (10-40 BPM)
                 peaks, _ = find_peaks(
                     filtered_signal,
                     height=height_threshold,
-                    distance=int(0.4 * fs),
+                    distance=int(0.4 * fs),  # 400ms - prevents false peaks, allows 10-300 BPM via RR filtering
                     prominence=prominence_threshold
                 )
             
@@ -2232,14 +2237,15 @@ class Dashboard(QWidget):
             print(f"⚠️ Error syncing dashboard metrics to ECG test page: {e}")
     
     def update_dashboard_metrics_from_ecg(self):
-        """Update dashboard metrics from ECG test page data"""
+        """Update dashboard metrics from ECG test page data - matches 12-lead test page update frequency"""
         try:
             import time as _time
-            # Throttle: update at most once every 5 seconds
+            # Throttle: update every 1 second to match 12-lead test page update frequency (same as update_ecg_metrics_display)
             if not hasattr(self, '_last_metrics_update_ts'):
                 self._last_metrics_update_ts = 0.0
-            if _time.time() - self._last_metrics_update_ts < 5.0:
+            if _time.time() - self._last_metrics_update_ts < 1.0:
                 return
+            self._last_metrics_update_ts = _time.time()
             # Block updates for first-time users until acquisition/demo starts
             if not self.is_ecg_active():
                 return

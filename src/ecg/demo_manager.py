@@ -733,19 +733,21 @@ class DemoManager:
                 time_axis = np.arange(n, dtype=float) / float(self.samples_per_second)
                 self.ecg_test_page.data_lines[i].setData(time_axis, display_data)
                 
-                base_span = max(200.0, baseline_envelope * 1.25)
+                # Scale base span with gain to prevent cropping at higher gains
+                # Medical standard: Y-axis should accommodate gain-scaled amplitudes
+                base_span = max(200.0, baseline_envelope * 1.25) * effective_gain
                 if lead_peak is not None and lead_peak > base_span:
                     overshoot = lead_peak - base_span
                     base_span += overshoot * 0.35
                     if lead_peak > base_span:
-                        base_span = lead_peak * 1.05
+                        base_span = lead_peak * 1.15  # 15% headroom to prevent cropping
         
                 prev_span = self._demo_lead_ranges.get(i)
                 if prev_span is not None:
                     smoothed_span = 0.65 * prev_span + 0.35 * base_span
                 else:
                     smoothed_span = base_span
-                smoothed_span = max(150.0, smoothed_span)
+                smoothed_span = max(150.0 * effective_gain, smoothed_span)  # Scale minimum with gain
                 self._demo_lead_ranges[i] = smoothed_span
                 self.ecg_test_page.plot_widgets[i].setYRange(-smoothed_span, smoothed_span)
                 

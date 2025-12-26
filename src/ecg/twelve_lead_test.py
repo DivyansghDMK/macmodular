@@ -597,7 +597,7 @@ class LiveLeadWindow(QWidget):
         self.canvas = FigureCanvas(self.fig)
         layout.addWidget(self.canvas)
         
-        self.line, = self.ax.plot([], [], color=color, linewidth=2)
+        self.line, = self.ax.plot([], [], color=color, linewidth=0.7)
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_plot)
         self.timer.start(50)  # 20 FPS
@@ -1536,20 +1536,20 @@ class ECGTestPage(QWidget):
         self.plot_widgets = []
         self.data_lines = []
         
-        # Define colors for each lead type for consistent color coding
+        # Define colors for each lead type for consistent color coding (darker shades)
         lead_colors = {
-            'I': '#ff6b6b',      # Red
-            'II': '#4ecdc4',     # Teal  
-            'III': '#45b7d1',    # Blue
-            'aVR': '#96ceb4',    # Green
-            'aVL': '#feca57',    # Yellow
-            'aVF': '#ff9ff3',    # Pink
-            'V1': '#54a0ff',     # Light Blue
-            'V2': '#5f27cd',     # Purple
-            'V3': '#00d2d3',     # Cyan
-            'V4': '#ff9f43',     # Orange
-            'V5': '#10ac84',     # Dark Green
-            'V6': '#ee5a24'      # Dark Orange
+            'I': '#cc5555',      # Darker Red
+            'II': '#3eb99a',     # Darker Teal  
+            'III': '#3692a8',    # Darker Blue
+            'aVR': '#78a090',    # Darker Green
+            'aVL': '#cba246',    # Darker Yellow
+            'aVF': '#cc7fc2',    # Darker Pink
+            'V1': '#4380cc',     # Darker Light Blue
+            'V2': '#4c1fa4',     # Darker Purple
+            'V3': '#00a8a8',     # Darker Cyan
+            'V4': '#cc7f35',     # Darker Orange
+            'V5': '#0d8969',     # Darker Dark Green
+            'V6': '#be481c'      # Darker Dark Orange
         }
         
         positions = [(i, j) for i in range(4) for j in range(3)]
@@ -1584,7 +1584,7 @@ class ECGTestPage(QWidget):
             
             row, col = positions[i]
             grid.addWidget(plot_widget, row, col)
-            data_line = plot_widget.plot(pen=pg.mkPen(color=lead_color, width=2.0))
+            data_line = plot_widget.plot(pen=pg.mkPen(color=lead_color, width=0.7))
 
             self.plot_widgets.append(plot_widget)
             self.data_lines.append(data_line)
@@ -1956,36 +1956,148 @@ class ECGTestPage(QWidget):
         
         signal_mean = np.mean(filtered_ii)
         signal_std = np.std(filtered_ii)
-        r_peaks, _ = find_peaks(
+        
+        # Use adaptive peak detection for 10-300 BPM (same as calculate_heart_rate)
+        # Try multiple strategies and select best based on consistency
+        detection_results = []
+        height_threshold = signal_mean + 0.5 * signal_std
+        prominence_threshold = signal_std * 0.4
+        
+        # Strategy 1: Conservative (10-120 BPM)
+        # Distance set to minimum RR for highest BPM in range (120 BPM = 500ms)
+        # RR interval filtering (200-6000ms) will handle the full 10-300 BPM range
+        peaks_conservative, _ = find_peaks(
             filtered_ii,
-            height=signal_mean + 0.5 * signal_std,
-            distance=int(0.3 * fs),
-            prominence=signal_std * 0.4
+            height=height_threshold,
+            distance=int(0.4 * fs),  # 400ms - prevents false peaks, allows 10-300 BPM via RR filtering
+            prominence=prominence_threshold
         )
+        if len(peaks_conservative) >= 2:
+            rr_cons = np.diff(peaks_conservative) * (1000 / fs)
+            valid_cons = rr_cons[(rr_cons >= 200) & (rr_cons <= 6000)]
+            if len(valid_cons) > 0:
+                bpm_cons = 60000 / np.median(valid_cons)
+                std_cons = np.std(valid_cons)
+                detection_results.append(('conservative', peaks_conservative, bpm_cons, std_cons))
+        
+        # Strategy 2: Normal (100-180 BPM)
+        peaks_normal, _ = find_peaks(
+            filtered_ii,
+            height=height_threshold,
+            distance=int(0.3 * fs),  # 240ms - medium distance
+            prominence=prominence_threshold
+        )
+        if len(peaks_normal) >= 2:
+            rr_norm = np.diff(peaks_normal) * (1000 / fs)
+            valid_norm = rr_norm[(rr_norm >= 200) & (rr_norm <= 6000)]
+            if len(valid_norm) > 0:
+                bpm_norm = 60000 / np.median(valid_norm)
+                std_norm = np.std(valid_norm)
+                detection_results.append(('normal', peaks_normal, bpm_norm, std_norm))
+        
+        # Strategy 3: Tight (160-300 BPM) - CRITICAL for 300 BPM detection
+        peaks_tight, _ = find_peaks(
+            filtered_ii,
+            height=height_threshold,
+            distance=int(0.2 * fs),  # 160ms - tight distance for high BPM (300 BPM = 200ms RR)
+            prominence=prominence_threshold
+        )
+        if len(peaks_tight) >= 2:
+            rr_tight = np.diff(peaks_tight) * (1000 / fs)
+            valid_tight = rr_tight[(rr_tight >= 200) & (rr_tight <= 6000)]
+            if len(valid_tight) > 0:
+                bpm_tight = 60000 / np.median(valid_tight)
+                std_tight = np.std(valid_tight)
+                detection_results.append(('tight', peaks_tight, bpm_tight, std_tight))
+        
+        # Select best strategy based on consistency (lowest std deviation)
+        if detection_results:
+            detection_results.sort(key=lambda x: x[3])  # Sort by std
+            best_method, r_peaks, best_bpm, best_std = detection_results[0]
+        else:
+            # Fallback to conservative strategy for low BPM (10-120 BPM)
+            r_peaks, _ = find_peaks(
+                filtered_ii,
+                height=height_threshold,
+                distance=int(0.4 * fs),  # 400ms - prevents false peaks, allows 10-300 BPM via RR filtering
+                prominence=prominence_threshold
+            )
+        
+        # Calculate BPM first (works with ≥2 beats) - needed for low BPM detection
+        # This allows BPM calculation even when we don't have enough beats for median beat
+        if len(r_peaks) >= 2:
+            rr_intervals_ms = np.diff(r_peaks) / fs * 1000.0
+            valid_rr = rr_intervals_ms[(rr_intervals_ms >= 200) & (rr_intervals_ms <= 6000)]
+            if len(valid_rr) > 0:
+                rr_ms = np.median(valid_rr)
+                estimated_bpm = 60000.0 / rr_ms if rr_ms > 0 else 60
+            else:
+                estimated_bpm = 60
+        else:
+            estimated_bpm = 60
+        
+        # Adaptive minimum beat requirement based on BPM and available data window
+        # At low BPM (< 40), we need longer windows, so reduce minimum beats
+        # At 10 BPM: need 6s per beat, so 2 beats = 12s (not possible in 4s buffer)
+        # At 30 BPM: need 2s per beat, so 2 beats = 4s (just possible)
+        # Strategy: Use minimum 2 beats for BPM, but require more for median beat if possible
+        min_beats_for_bpm = 2  # Always allow BPM calculation with 2 beats
+        min_beats_for_median = 8  # Preferred for median beat
+        
+        # If we have low BPM (< 40), reduce median beat requirement
+        if estimated_bpm < 40:
+            # At low BPM, accept fewer beats for median (minimum 3 for basic metrics)
+            min_beats_for_median = max(3, min(8, len(r_peaks)))
         
         # Fallback to V2 if Lead II has insufficient beats (GE/Philips standard)
-        if len(r_peaks) < 8 and len(self.data) > 3:
+        if len(r_peaks) < min_beats_for_bpm and len(self.data) > 3:
             lead_v2_data = self.data[3]  # V2 is typically index 3
             if len(lead_v2_data) > 100 and np.std(lead_v2_data) > 0.1:
                 filtered_v2 = filtfilt(b, a, lead_v2_data)
                 signal_mean_v2 = np.mean(filtered_v2)
                 signal_std_v2 = np.std(filtered_v2)
+                
+                # Use same adaptive detection for V2 (prioritize conservative for low BPM)
+                height_v2 = signal_mean_v2 + 0.5 * signal_std_v2
+                prominence_v2 = signal_std_v2 * 0.4
+                
+                # Try conservative strategy first for V2 (best for low BPM 10-120)
                 r_peaks_v2, _ = find_peaks(
                     filtered_v2,
-                    height=signal_mean_v2 + 0.5 * signal_std_v2,
-                    distance=int(0.3 * fs),
-                    prominence=signal_std_v2 * 0.4
+                    height=height_v2,
+                    distance=int(0.4 * fs),  # 400ms - conservative for low BPM
+                    prominence=prominence_v2
                 )
-                if len(r_peaks_v2) >= 8:
+                
+                # If conservative doesn't work, try normal
+                if len(r_peaks_v2) < min_beats_for_bpm:
+                    r_peaks_v2, _ = find_peaks(
+                        filtered_v2,
+                        height=height_v2,
+                        distance=int(0.3 * fs),  # 240ms - normal
+                        prominence=prominence_v2
+                    )
+                
+                if len(r_peaks_v2) >= min_beats_for_bpm:
                     r_peaks = r_peaks_v2
                     lead_ii_data = lead_v2_data  # Use V2 for beat alignment
+                    # Recalculate estimated BPM from V2
+                    if len(r_peaks) >= 2:
+                        rr_intervals_ms = np.diff(r_peaks) / fs * 1000.0
+                        valid_rr = rr_intervals_ms[(rr_intervals_ms >= 200) & (rr_intervals_ms <= 6000)]
+                        if len(valid_rr) > 0:
+                            rr_ms = np.median(valid_rr)
+                            estimated_bpm = 60000.0 / rr_ms if rr_ms > 0 else 60
+                            # Update min_beats_for_median based on V2 BPM
+                            if estimated_bpm < 40:
+                                min_beats_for_median = max(3, min(8, len(r_peaks)))
         
-        # Require ≥8 clean beats for median beat (GE/Philips standard)
-        if len(r_peaks) < 8:
+        # Require minimum beats for BPM calculation (≥2 beats)
+        if len(r_peaks) < min_beats_for_bpm:
             return
         
-        # Build median beat from raw Lead II (or V2 fallback) - requires ≥8 beats
-        time_axis, median_beat_ii = build_median_beat(lead_ii_data, r_peaks, fs, min_beats=8)
+        # Build median beat with adaptive minimum beats (prefer 8, but allow fewer for low BPM)
+        time_axis, median_beat_ii = build_median_beat(lead_ii_data, r_peaks, fs, min_beats=min_beats_for_median)
         if median_beat_ii is None:
             return
         
@@ -2005,8 +2117,31 @@ class ECGTestPage(QWidget):
             rr_ms = 600.0
         
         # Calculate Heart Rate: HR = 60000 / RR (GE/Philips standard)
-        heart_rate = int(round(60000.0 / rr_ms)) if rr_ms > 0 else 60
-        self.last_heart_rate = heart_rate
+        heart_rate_raw = int(round(60000.0 / rr_ms)) if rr_ms > 0 else 60
+        self.last_heart_rate = heart_rate_raw
+        
+        # Apply same smoothing as calculate_heart_rate() for stable display (matches dashboard)
+        # Initialize smoothing buffer if needed
+        if not hasattr(self, '_hr_smooth_buffer_metrics'):
+            self._hr_smooth_buffer_metrics = []
+        
+        # Add current reading to buffer
+        self._hr_smooth_buffer_metrics.append(heart_rate_raw)
+        if len(self._hr_smooth_buffer_metrics) > 10:  # 10-reading smoothing for maximum stability
+            self._hr_smooth_buffer_metrics.pop(0)
+        
+        # Use median for smoothing to ignore outliers
+        smoothed_hr = int(round(np.median(self._hr_smooth_buffer_metrics)))
+        
+        # Final stability check: only change display if shift is ≥3 BPM (stricter threshold for stability)
+        if not hasattr(self, '_last_stable_hr_metrics'):
+            self._last_stable_hr_metrics = smoothed_hr
+        
+        if abs(smoothed_hr - self._last_stable_hr_metrics) >= 3:
+            self._last_stable_hr_metrics = smoothed_hr
+        
+        # Use smoothed stable value for display (matches dashboard behavior)
+        heart_rate = self._last_stable_hr_metrics
         
         # Calculate PR Interval from median beat (standardized function)
         # IMPORTANT: PR interval is calculated from Lead II (median_beat_ii) - GE/Philips standard
@@ -2027,8 +2162,8 @@ class ECGTestPage(QWidget):
             qt_interval = 0
         self.last_qt_interval = qt_interval
         
-        # Calculate QTc (Bazett) and QTcF (Fridericia)
-        qtc_interval = self.calculate_qtc_interval(heart_rate, qt_interval)
+        # Calculate QTc (Bazett) and QTcF (Fridericia) using smoothed heart_rate for consistency
+        qtc_interval = self.calculate_qtc_interval(heart_rate, qt_interval)  # Uses smoothed heart_rate
         qtcf_interval = self.calculate_qtcf_interval(qt_interval, rr_ms)
         self.last_qtc_interval = qtc_interval
         self.last_qtcf_interval = qtcf_interval
@@ -2156,10 +2291,12 @@ class ECGTestPage(QWidget):
                 detection_results = []
                 
                 # Strategy 1: Conservative (best for 10-120 BPM)
+                # Distance set to minimum RR for highest BPM in range (120 BPM = 500ms)
+                # RR interval filtering (200-6000ms) will handle the full 10-300 BPM range
                 peaks_conservative, _ = find_peaks(
                     filtered_signal,
                     height=height_threshold,
-                    distance=int(0.5 * fs),  # 400ms - wider distance for low BPM
+                    distance=int(0.4 * fs),  # 400ms - prevents false peaks, allows 10-300 BPM via RR filtering
                     prominence=prominence_threshold
                 )
                 if len(peaks_conservative) >= 2:
@@ -2210,11 +2347,11 @@ class ECGTestPage(QWidget):
                     best_method, peaks, best_bpm, best_std = detection_results[0]
                     # print(f"🎯 Selected {best_method}: {best_bpm:.1f} BPM (std={best_std:.1f})")
                 else:
-                    # Fallback
+                    # Fallback - use conservative distance to handle low BPM (10-120 BPM)
                     peaks, _ = find_peaks(
                         filtered_signal,
                         height=height_threshold,
-                        distance=int(0.4 * fs),
+                        distance=int(0.4 * fs),  # 400ms - prevents false peaks, allows 10-300 BPM via RR filtering
                         prominence=prominence_threshold
                     )
             except Exception as e:
@@ -2281,17 +2418,17 @@ class ECGTestPage(QWidget):
                     self._hr_smooth_buffer = []
                 
                 self._hr_smooth_buffer.append(hr_int)
-                if len(self._hr_smooth_buffer) > 5:  # 5-reading smoothing
+                if len(self._hr_smooth_buffer) > 10:  # 10-reading smoothing for maximum stability
                     self._hr_smooth_buffer.pop(0)
                 
                 # Use median for smoothing to ignore outliers
                 smoothed_hr = int(round(np.median(self._hr_smooth_buffer)))
                 
-                # Final stability check: only change display if shift is ≥2 BPM (increased from 1 for better stability)
+                # Final stability check: only change display if shift is ≥3 BPM (stricter threshold for stability)
                 if not hasattr(self, '_last_stable_hr'):
                     self._last_stable_hr = smoothed_hr
                     
-                if abs(smoothed_hr - self._last_stable_hr) >= 2:
+                if abs(smoothed_hr - self._last_stable_hr) >= 3:
                     self._last_stable_hr = smoothed_hr
                 
                 return self._last_stable_hr
@@ -3300,10 +3437,28 @@ class ECGTestPage(QWidget):
                 if len(lead_ii_data) >= 100 and not np.all(lead_ii_data == 0) and np.std(lead_ii_data) >= 0.1:
                     has_real_signal = True
             
-            # Get current heart rate
-            if has_real_signal:
-                heart_rate = self.calculate_heart_rate(self.data[1])
-                metrics['heart_rate'] = f"{heart_rate}" if heart_rate > 0 else "0"
+            # Get current heart rate - use same value displayed on 12-lead test page (unsmoothed)
+            # Priority: Get from metric_labels (what's actually displayed on 12-lead page)
+            if hasattr(self, 'metric_labels') and 'heart_rate' in self.metric_labels:
+                hr_text = self.metric_labels['heart_rate'].text().strip()
+                # Extract numeric value (remove "BPM" or "bpm" suffix and spaces)
+                hr_text = hr_text.replace(' BPM', '').replace(' bpm', '').replace('BPM', '').replace('bpm', '').strip()
+                if hr_text and hr_text not in ('00', '--', '0', ''):
+                    metrics['heart_rate'] = hr_text
+                else:
+                    # Fallback to last_heart_rate from calculate_ecg_metrics (unsmoothed)
+                    if hasattr(self, 'last_heart_rate') and self.last_heart_rate > 0:
+                        metrics['heart_rate'] = f"{self.last_heart_rate}"
+                    else:
+                        metrics['heart_rate'] = "0"
+            elif has_real_signal:
+                # Fallback: use last_heart_rate (unsmoothed from calculate_ecg_metrics)
+                if hasattr(self, 'last_heart_rate') and self.last_heart_rate > 0:
+                    metrics['heart_rate'] = f"{self.last_heart_rate}"
+                else:
+                    # Last resort: calculate (but this returns smoothed value)
+                    heart_rate = self.calculate_heart_rate(self.data[1])
+                    metrics['heart_rate'] = f"{heart_rate}" if heart_rate > 0 else "0"
             else:
                 metrics['heart_rate'] = "0"
             
@@ -4721,7 +4876,8 @@ class ECGTestPage(QWidget):
 
     def update_plot_y_range_adaptive(self, plot_index, signal_source, data_override=None):
         """Update Y-axis range based on signal source with adaptive scaling.
-        If data_override is provided, use it for statistics (should be the plotted/scaled data)."""
+        If data_override is provided, use it for statistics (should be the plotted/scaled data).
+        Y-axis automatically adjusts to gain to prevent cropping."""
         try:
             if plot_index >= len(self.data) or plot_index >= len(self.plot_widgets):
                 return
@@ -4742,6 +4898,9 @@ class ECGTestPage(QWidget):
             if len(valid_data) == 0:
                 return
             
+            # Get current gain setting to properly scale Y-axis
+            current_gain = get_display_gain(self.settings_manager.get_wave_gain())
+            
             # Use percentiles to avoid spikes from clipping the view
             p1 = np.percentile(valid_data, 1)
             p99 = np.percentile(valid_data, 99)
@@ -4750,55 +4909,56 @@ class ECGTestPage(QWidget):
             # Maximum deviation of any point from the mean – we will always cover this
             peak_deviation = np.max(np.abs(valid_data - data_mean)) if len(valid_data) > 0 else 0.0
             
-            # Get current gain setting only if data is not already scaled
-            current_gain = 1.0 if data_already_scaled else get_display_gain(self.settings_manager.get_wave_gain())
-            
             # Calculate appropriate Y-range with adaptive padding based on signal source.
             # Goal: make peaks visually bigger but still avoid cropping by using robust stats.
+            # Medical standard: Y-axis should scale with gain to accommodate larger amplitudes
             if signal_source == "human_body":
-                # Lock to fixed range for human body motion (no adaptive scaling)
-                y_min = -600
-                y_max = 600
-                base_padding = None
-                padding = None
-                print("📊 Human body Y-range locked to ±600 for stability")
+                # Scale fixed range with gain for human body signals
+                base_range = 600
+                y_range = base_range * current_gain
+                y_min = -y_range
+                y_max = y_range
+                print(f"📊 Human body Y-range: ±{y_range:.1f} (gain={current_gain:.2f}x)")
             elif signal_source == "weak_body":
-                y_min = -400
-                y_max = 400
-                base_padding = None
-                padding = None
-                print("📊 Weak body Y-range locked to ±400 for stability")
+                # Scale fixed range with gain for weak body signals
+                base_range = 400
+                y_range = base_range * current_gain
+                y_min = -y_range
+                y_max = y_range
+                print(f"📊 Weak body Y-range: ±{y_range:.1f} (gain={current_gain:.2f}x)")
             else:
-                # Hardware / unknown – keep more room but less than before so peaks are taller.
-                base_padding = max(data_std * 3.0, 250)
-                padding = base_padding  # Do NOT scale padding with gain; signal already scaled
-                print(f"📊 Hardware Y-range: base_padding={base_padding:.1f}, padding={padding:.1f}")
+                # Hardware / unknown – use data-driven range that scales with gain
+                # Base padding scales with gain to accommodate larger amplitudes
+                base_padding = max(data_std * 3.0, 250) * current_gain
+                padding = base_padding
+                print(f"📊 Hardware Y-range: base_padding={base_padding:.1f}, gain={current_gain:.2f}x")
 
-            # FINAL SAFETY: always cover the tallest peak with 10% headroom,
+            # FINAL SAFETY: always cover the tallest peak with 15% headroom,
             # so waves never touch or cross the plot border (no cropping),
             # regardless of gain/speed combinations.
             if signal_source not in ["human_body", "weak_body"] and peak_deviation > 0:
-                min_padding = peak_deviation * 1.1
+                min_padding = peak_deviation * 1.15  # 15% headroom to prevent cropping
                 if padding < min_padding:
                     padding = min_padding
+                    print(f"📊 Adjusted padding to {padding:.1f} to cover peak deviation {peak_deviation:.1f}")
             
             if signal_source not in ["human_body", "weak_body"]:
                 if data_std > 0:
                     y_min = data_mean - padding
                     y_max = data_mean + padding
                 else:
-                    y_min = -400
-                    y_max = 400
+                    # Fallback: use gain-scaled default range
+                    base_range = 400 * current_gain
+                    y_min = -base_range
+                    y_max = base_range
             else:
-                # Fallback: use percentile window with reasonable range
-                data_range = max(p99 - p1, 80 if signal_source in ["human_body", "weak_body"] else 300)
-                y_min = data_mean - data_range / 2
-                y_max = data_mean + data_range / 2
-                
-                # Add extra margin to ensure NO cropping (20% padding beyond calculated range)
-                y_range = y_max - y_min
-                y_min = y_min - (y_range * 0.2)
-                y_max = y_max + (y_range * 0.2)
+                # Already set above for body signals
+                pass
+            
+            # Ensure reasonable bounds (but allow wider range for high gain)
+            max_range = 10000 * current_gain  # Scale max range with gain
+            y_min = max(y_min, -max_range)
+            y_max = min(y_max, max_range)
             
             # Apply the new Y-range using PyQtGraph with NO padding (we already added it)
             self.plot_widgets[plot_index].setYRange(y_min, y_max, padding=0)

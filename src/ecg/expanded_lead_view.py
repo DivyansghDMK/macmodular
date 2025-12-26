@@ -24,6 +24,17 @@ try:
 except ImportError:
     extract_respiration = None
     estimate_baseline_drift = None
+try:
+    from .clinical_measurements import (
+        build_median_beat, get_tp_baseline, measure_pr_from_median_beat,
+        measure_qrs_duration_from_median_beat, measure_qt_from_median_beat
+    )
+except ImportError:
+    build_median_beat = None
+    get_tp_baseline = None
+    measure_pr_from_median_beat = None
+    measure_qrs_duration_from_median_beat = None
+    measure_qt_from_median_beat = None
 
 class PQRSTAnalyzer:
     """Analyze ECG signal to detect P, Q, R, S, T waves and calculate metrics"""
@@ -954,13 +965,13 @@ class ExpandedLeadView(QDialog):
             valid_mask = ~np.isnan(scaled)
             if np.any(valid_mask):
                 if np.all(valid_mask):
-                    self.ax.plot(time, scaled, color='#0984e3', linewidth=1.0, label='ECG Signal')
+                    self.ax.plot(time, scaled, color='#0984e3', linewidth=0.7, label='ECG Signal')
                 else:
                     # Plot only valid segments
                     time_valid = time[valid_mask]
                     scaled_valid = scaled[valid_mask]
                     if len(time_valid) > 1:
-                        self.ax.plot(time_valid, scaled_valid, color='#0984e3', linewidth=1.0, label='ECG Signal')
+                        self.ax.plot(time_valid, scaled_valid, color='#0984e3', linewidth=0.7, label='ECG Signal')
             else:
                 print(f"All data is NaN in expanded view initialization for lead {self.lead_name}")
         
@@ -1449,13 +1460,13 @@ class ExpandedLeadView(QDialog):
                     # Plot only valid points
                     if np.all(valid_mask):
                         # All data is valid - plot normally
-                        self.ax.plot(time, display_signal, color='#0984e3', linewidth=1.0, label='ECG Signal', zorder=1, alpha=waveform_alpha)
+                        self.ax.plot(time, display_signal, color='#0984e3', linewidth=0.7, label='ECG Signal', zorder=1, alpha=waveform_alpha)
                     else:
                         # Some NaN values - plot segments
                         time_valid = time[valid_mask]
                         scaled_valid = display_signal[valid_mask]
                         if len(time_valid) > 1:
-                            self.ax.plot(time_valid, scaled_valid, color='#0984e3', linewidth=1.0, label='ECG Signal', zorder=1, alpha=waveform_alpha)
+                            self.ax.plot(time_valid, scaled_valid, color='#0984e3', linewidth=0.7, label='ECG Signal', zorder=1, alpha=waveform_alpha)
                 else:
                     print(f"⚠️ All data is NaN in expanded view for lead {self.lead_name}")
             else:
@@ -1945,19 +1956,78 @@ class ExpandedLeadView(QDialog):
                     self.update_metric('heart_rate', int(heart_rate))
                     self.update_metric('rr_interval', int(mean_rr))
             
-            # PR Interval
-            if len(p_peaks) > 0 and len(q_peaks) > 0:
-                # A more robust PR interval is P-onset to Q-onset
-                # Simplified: p_peak to q_peak
-                pr_intervals = [(q - p) / self.sampling_rate * 1000 for p, q in zip(p_peaks, q_peaks) if q > p]
-                if pr_intervals:
-                    self.update_metric('pr_interval', int(np.mean(pr_intervals)))
+            # PR Interval and QRS Duration - Use standardized functions for Lead II (same as 12-lead test page)
+            # For Lead II, use median beat method (GE/Philips standard) to match 12-lead test page
+            median_beat = None
+            time_axis = None
+            tp_baseline = None
             
-            # QRS Duration
-            if len(q_peaks) > 0 and len(s_peaks) > 0:
-                qrs_durations = [(s - q) / self.sampling_rate * 1000 for q, s in zip(q_peaks, s_peaks) if s > q]
-                if qrs_durations:
-                    self.update_metric('qrs_duration', int(np.mean(qrs_durations)))
+            if self.lead_name == "II" and build_median_beat is not None and len(r_peaks) >= 8:
+                try:
+                    # Build median beat from raw clinical data (same as 12-lead test page)
+                    time_axis, median_beat = build_median_beat(self.ecg_data, r_peaks, self.sampling_rate, min_beats=8)
+                    if median_beat is not None:
+                        # Get TP baseline (same as 12-lead test page)
+                        r_mid = r_peaks[len(r_peaks) // 2]
+                        prev_r_idx = r_peaks[len(r_peaks) // 2 - 1] if len(r_peaks) > 1 else None
+                        tp_baseline = get_tp_baseline(self.ecg_data, r_mid, self.sampling_rate, prev_r_peak_idx=prev_r_idx)
+                except Exception as e:
+                    print(f"⚠️ Error building median beat in expanded view: {e}")
+                    median_beat = None
+            
+            # PR Interval calculation
+            if median_beat is not None and measure_pr_from_median_beat is not None:
+                try:
+                    # Calculate PR using standardized function (same as 12-lead test page)
+                    pr_interval = measure_pr_from_median_beat(median_beat, time_axis, self.sampling_rate, tp_baseline)
+                    if pr_interval and pr_interval > 0:
+                        self.update_metric('pr_interval', pr_interval)
+                    else:
+                        # Fallback to simple method if standardized fails
+                        if len(p_peaks) > 0 and len(q_peaks) > 0:
+                            pr_intervals = [(q - p) / self.sampling_rate * 1000 for p, q in zip(p_peaks, q_peaks) if q > p]
+                            if pr_intervals:
+                                self.update_metric('pr_interval', int(np.mean(pr_intervals)))
+                except Exception as e:
+                    print(f"⚠️ Error calculating PR from median beat in expanded view: {e}")
+                    # Fallback to simple method
+                    if len(p_peaks) > 0 and len(q_peaks) > 0:
+                        pr_intervals = [(q - p) / self.sampling_rate * 1000 for p, q in zip(p_peaks, q_peaks) if q > p]
+                        if pr_intervals:
+                            self.update_metric('pr_interval', int(np.mean(pr_intervals)))
+            else:
+                # For other leads or if median beat not available, use simple method
+                if len(p_peaks) > 0 and len(q_peaks) > 0:
+                    pr_intervals = [(q - p) / self.sampling_rate * 1000 for p, q in zip(p_peaks, q_peaks) if q > p]
+                    if pr_intervals:
+                        self.update_metric('pr_interval', int(np.mean(pr_intervals)))
+            
+            # QRS Duration calculation
+            if median_beat is not None and measure_qrs_duration_from_median_beat is not None:
+                try:
+                    # Calculate QRS using standardized function (same as 12-lead test page)
+                    qrs_duration = measure_qrs_duration_from_median_beat(median_beat, time_axis, self.sampling_rate, tp_baseline)
+                    if qrs_duration and qrs_duration > 0:
+                        self.update_metric('qrs_duration', qrs_duration)
+                    else:
+                        # Fallback to simple method if standardized fails
+                        if len(q_peaks) > 0 and len(s_peaks) > 0:
+                            qrs_durations = [(s - q) / self.sampling_rate * 1000 for q, s in zip(q_peaks, s_peaks) if s > q]
+                            if qrs_durations:
+                                self.update_metric('qrs_duration', int(np.mean(qrs_durations)))
+                except Exception as e:
+                    print(f"⚠️ Error calculating QRS from median beat in expanded view: {e}")
+                    # Fallback to simple method
+                    if len(q_peaks) > 0 and len(s_peaks) > 0:
+                        qrs_durations = [(s - q) / self.sampling_rate * 1000 for q, s in zip(q_peaks, s_peaks) if s > q]
+                        if qrs_durations:
+                            self.update_metric('qrs_duration', int(np.mean(qrs_durations)))
+            else:
+                # For other leads or if median beat not available, use simple method
+                if len(q_peaks) > 0 and len(s_peaks) > 0:
+                    qrs_durations = [(s - q) / self.sampling_rate * 1000 for q, s in zip(q_peaks, s_peaks) if s > q]
+                    if qrs_durations:
+                        self.update_metric('qrs_duration', int(np.mean(qrs_durations)))
             
             # QTc Interval (Bazett's formula) using measured QT (if available)
             if 'rr_interval' in self.metrics_cards and self.metrics_cards['rr_interval'].value > 0:
