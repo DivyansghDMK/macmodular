@@ -309,6 +309,12 @@ class SerialStreamReader:
         self.last_error_time = 0
         self.crash_logger = get_crash_logger()
         self.user_details = {}  # For error reporting compatibility
+        # Packet loss tracking
+        self.start_time = time.time()
+        self.last_packet_time = time.time()
+        self.total_packets_expected = 0
+        self.total_packets_lost = 0
+        self.packet_loss_percent = 0.0
         print(f"🔌 SerialStreamReader initialized: Port={port}, Baud={baudrate}")
 
     def close(self) -> None:
@@ -325,13 +331,32 @@ class SerialStreamReader:
         self.ser.reset_input_buffer()
         self.buf.clear()
         self.running = True
+        # Initialize packet loss tracking
+        self.start_time = time.time()
+        self.last_packet_time = time.time()
+        self.data_count = 0
+        self.total_packets_expected = 0
+        self.total_packets_lost = 0
+        self.packet_loss_percent = 0.0
         print("✅ Packet-based ECG device started - waiting for data packets...")
 
     def stop(self):
         """Stop data acquisition"""
         print("⏹️ Stopping packet-based ECG data acquisition...")
         self.running = False
-        print(f"📊 Total data packets received: {self.data_count}")
+        # Final packet loss statistics
+        if hasattr(self, 'start_time') and self.start_time > 0:
+            elapsed_time = time.time() - self.start_time
+            expected_packets = int(500 * elapsed_time)  # 500 Hz
+            total_lost = max(0, expected_packets - self.data_count)
+            loss_percent = (total_lost / expected_packets * 100) if expected_packets > 0 else 0
+            print(f"📊 Total data packets received: {self.data_count}")
+            if total_lost > 0:
+                print(f"📊 Packet loss summary: {total_lost}/{expected_packets} packets lost ({loss_percent:.2f}% loss)")
+            else:
+                print(f"✅ No packet loss detected - all {expected_packets} expected packets received")
+        else:
+            print(f"📊 Total data packets received: {self.data_count}")
 
     def read_packets(self, max_packets: int = 100) -> List[Dict[str, int]]:
         """Read and parse ECG packets from serial stream
@@ -385,6 +410,7 @@ class SerialStreamReader:
                 parsed = parse_packet(candidate)
                 if parsed:
                     self.data_count += 1
+                    self.last_packet_time = time.time()
                     # Only log every 100th packet to reduce console spam
                     if self.data_count % 100 == 0:
                         print(f"📡 [Packet #{self.data_count}] Received valid packet with {len(parsed)} leads")
@@ -393,6 +419,15 @@ class SerialStreamReader:
             # Warn if buffer is accumulating too much data (indicates we're falling behind)
             if len(self.buf) > 50000:  # >50KB buffer indicates we're not reading fast enough
                 print(f"⚠️ Serial buffer accumulation: {len(self.buf)} bytes - may indicate packet loss")
+            
+            # Update packet loss statistics
+            if self.running and self.data_count > 0:
+                elapsed_time = time.time() - self.start_time
+                expected_packets = int(500 * elapsed_time)  # 500 Hz = 500 packets/second
+                self.total_packets_expected = expected_packets
+                self.total_packets_lost = max(0, expected_packets - self.data_count)
+                if expected_packets > 0:
+                    self.packet_loss_percent = (self.total_packets_lost / expected_packets) * 100
                     
         except Exception as e:
             self.error_count += 1
@@ -3623,8 +3658,60 @@ class ECGTestPage(QWidget):
             # CRITICAL: Update all lead titles IMMEDIATELY
             self.update_all_lead_titles()
             
-            # Force redraw of all plots
+            # Force redraw of all plots (matplotlib)
             self.redraw_all_plots()
+            
+            # CRITICAL: Force immediate update of PyQtGraph plots (serial mode)
+            # This ensures wave gain changes are visible immediately in live display
+            if hasattr(self, 'data_lines') and self.data_lines and hasattr(self, 'data') and len(self.data) > 0:
+                try:
+                    # Detect if we're in serial mode (PyQtGraph plots)
+                    if hasattr(self, 'plot_widgets') and self.plot_widgets:
+                        # Force immediate update by manually triggering plot update with current data
+                        # Get signal source from first available lead
+                        signal_source = "hardware"  # Default
+                        if len(self.data) > 0 and len(self.data[0]) > 0:
+                            try:
+                                signal_source = self.detect_signal_source(self.data[0])
+                            except:
+                                pass
+                        
+                        # Update all PyQtGraph plots with new gain immediately
+                        for i in range(min(len(self.data_lines), len(self.data), len(self.plot_widgets))):
+                            if i < len(self.data) and len(self.data[i]) > 0:
+                                # Apply gain to current data
+                                gain_factor = get_display_gain(self.settings_manager.get_wave_gain())
+                                
+                                # Get current data slice (same logic as update_plots)
+                                wave_speed = self.settings_manager.get_wave_speed()
+                                baseline_seconds = 3.0
+                                seconds_scale = (25.0 / max(1e-6, wave_speed))
+                                seconds_to_show = baseline_seconds * seconds_scale
+                                
+                                sampling_rate = 500.0
+                                if hasattr(self, 'sampler') and hasattr(self.sampler, 'sampling_rate') and self.sampler.sampling_rate > 10:
+                                    sampling_rate = float(self.sampler.sampling_rate)
+                                
+                                samples_to_show = int(sampling_rate * seconds_to_show)
+                                raw_data = self.data[i]
+                                if len(raw_data) > samples_to_show:
+                                    data_slice = raw_data[-samples_to_show:]
+                                else:
+                                    data_slice = raw_data
+                                
+                                # Apply filtering and gain (same as update_plots)
+                                filtered_slice = np.array(data_slice, dtype=float)
+                                # Apply baseline correction, AC filter, etc. (simplified for immediate update)
+                                centered_slice = filtered_slice - np.nanmedian(filtered_slice) if len(filtered_slice) > 0 else filtered_slice
+                                scaled_data = centered_slice * gain_factor
+                                
+                                # Update plot data and Y-axis
+                                time_axis = np.arange(len(scaled_data), dtype=float) / sampling_rate
+                                self.data_lines[i].setData(time_axis, scaled_data)
+                                self.update_plot_y_range_adaptive(i, signal_source, data_override=scaled_data)
+                        print(f"✅ PyQtGraph plots updated immediately with new gain={gain_factor:.2f}x")
+                except Exception as e:
+                    print(f"⚠️ Error updating PyQtGraph plots immediately: {e}")
             
             # Notify demo manager for instant updates (like divyansh.py)
             if hasattr(self, 'demo_manager') and self.demo_manager:
@@ -4612,9 +4699,9 @@ class ECGTestPage(QWidget):
                             ax.plot(idx, ecg_signal[idx], 'o', color='green', markersize=8, zorder=10)
                             y_offset = 0.12 * (np.max(ecg_signal) - np.min(ecg_signal))
                             if label in ['P', 'T']:
-                                ax.text(idx, ecg_signal[idx]+y_offset, label, color='green', fontsize=12, fontweight='bold', ha='center', va='bottom', zorder=11, bbox=dict(facecolor='white', edgecolor='none', alpha=0.7, boxstyle='round,pad=0.1'))
+                                ax.text(idx, ecg_signal[idx]+y_offset, label, color='green', fontsize=12, fontweight='bold', ha='center', va='bottom', zorder=11, bbox=dict(facecolor='white', edgecolor='none', alpha=2.0, boxstyle='round,pad=0.1'))
                             else:
-                                ax.text(idx, ecg_signal[idx]-y_offset, label, color='green', fontsize=12, fontweight='bold', ha='center', va='top', zorder=11, bbox=dict(facecolor='white', edgecolor='none', alpha=0.7, boxstyle='round,pad=0.1'))
+                                ax.text(idx, ecg_signal[idx]-y_offset, label, color='green', fontsize=12, fontweight='bold', ha='center', va='top', zorder=11, bbox=dict(facecolor='white', edgecolor='none', alpha=2.0, boxstyle='round,pad=0.1'))
                 # --- Metrics (for Lead II only, based on R peaks) ---
                 if lead == "II":
                     heart_rate = None
@@ -4962,7 +5049,7 @@ class ECGTestPage(QWidget):
             if len(valid_data) == 0:
                 return
             
-            # Get current gain setting to properly scale Y-axis
+            # Get current gain setting for reference (data is already scaled if data_override provided)
             current_gain = get_display_gain(self.settings_manager.get_wave_gain())
             
             # Use percentiles to avoid spikes from clipping the view
@@ -4975,27 +5062,33 @@ class ECGTestPage(QWidget):
             
             # Calculate appropriate Y-range with adaptive padding based on signal source.
             # Goal: make peaks visually bigger but still avoid cropping by using robust stats.
-            # Medical standard: Y-axis should scale with gain to accommodate larger amplitudes
+            # CRITICAL: If data_override is provided, data is ALREADY scaled with gain!
+            # So we use data statistics directly (data_std already reflects the gain).
             if signal_source == "human_body":
-                # Scale fixed range with gain for human body signals
+                # For body signals, use a fixed range that scales with gain
                 base_range = 600
                 y_range = base_range * current_gain
                 y_min = -y_range
                 y_max = y_range
                 print(f"📊 Human body Y-range: ±{y_range:.1f} (gain={current_gain:.2f}x)")
             elif signal_source == "weak_body":
-                # Scale fixed range with gain for weak body signals
                 base_range = 400
                 y_range = base_range * current_gain
                 y_min = -y_range
                 y_max = y_range
                 print(f"📊 Weak body Y-range: ±{y_range:.1f} (gain={current_gain:.2f}x)")
             else:
-                # Hardware / unknown – use data-driven range that scales with gain
-                # Base padding scales with gain to accommodate larger amplitudes
-                base_padding = max(data_std * 3.0, 250) * current_gain
+                # Hardware / unknown – use data-driven range
+                # If data is already scaled, data_std already includes gain, so use it directly
+                # If data is not scaled, we'd need to multiply by gain, but we always pass scaled data
+                if data_already_scaled:
+                    # Data is already scaled - use its std directly (no additional gain multiplication)
+                    base_padding = max(data_std * 3.0, 250 * current_gain)
+                else:
+                    # Data is not scaled (shouldn't happen in serial mode, but handle it)
+                    base_padding = max(data_std * 3.0, 250) * current_gain
                 padding = base_padding
-                print(f"📊 Hardware Y-range: base_padding={base_padding:.1f}, gain={current_gain:.2f}x")
+                print(f"📊 Hardware Y-range: base_padding={base_padding:.1f}, data_std={data_std:.1f}, gain={current_gain:.2f}x, scaled={data_already_scaled}")
 
             # FINAL SAFETY: always cover the tallest peak with 15% headroom,
             # so waves never touch or cross the plot border (no cropping),
@@ -7380,7 +7473,7 @@ class ECGTestPage(QWidget):
                 try:
                     packets = self.serial_reader.read_packets(max_packets=max_packets)
                     
-                    # Detect packet loss
+                    # Detect packet loss - comprehensive monitoring
                     current_time = time.time()
                     if hasattr(self.serial_reader, 'data_count'):
                         current_packet_count = self.serial_reader.data_count
@@ -7392,8 +7485,24 @@ class ECGTestPage(QWidget):
                             packet_loss = max(0, expected_packets - packets_received)
                             packet_loss_percent = (packet_loss / expected_packets * 100) if expected_packets > 0 else 0
                             
-                            if packet_loss_percent > 5.0:  # More than 5% packet loss
+                            # Get overall statistics from SerialStreamReader
+                            overall_loss_percent = 0.0
+                            if hasattr(self.serial_reader, 'packet_loss_percent'):
+                                overall_loss_percent = self.serial_reader.packet_loss_percent
+                            
+                            # Alert on packet loss
+                            if packet_loss_percent > 5.0:  # More than 5% packet loss in this interval
                                 print(f"⚠️ Packet loss detected: {packet_loss}/{expected_packets} packets ({packet_loss_percent:.1f}% loss) - This may cause waveform deformation")
+                                if overall_loss_percent > 0:
+                                    print(f"   Overall packet loss since start: {overall_loss_percent:.2f}% ({self.serial_reader.total_packets_lost}/{self.serial_reader.total_packets_expected} packets)")
+                            
+                            # Periodic status report (every 10 seconds)
+                            if not hasattr(self, '_last_status_report'):
+                                self._last_status_report = current_time
+                            if current_time - self._last_status_report >= 10.0:
+                                if overall_loss_percent > 0:
+                                    print(f"📊 Packet Statistics: Received {current_packet_count} packets, Lost {self.serial_reader.total_packets_lost} packets ({overall_loss_percent:.2f}% loss)")
+                                self._last_status_report = current_time
                             
                             self._last_packet_count = current_packet_count
                             self._last_packet_time = current_time

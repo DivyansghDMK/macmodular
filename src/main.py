@@ -59,7 +59,6 @@ try:
     from auth.sign_in import SignIn
     from auth.sign_out import SignOut
     from dashboard.dashboard import Dashboard
-    from splash_screen import SplashScreen
     logger.info(SUCCESS_MESSAGES["modules_loaded"])
 except ImportError as e:
     logger.error(ERROR_MESSAGES["import_error"].format(e))
@@ -607,15 +606,9 @@ def main():
         app = QApplication(sys.argv)
         app.setApplicationName("ECG Monitor")
         app.setApplicationVersion("1.3")    
-        
-        # Show splash screen
-        splash = SplashScreen()
-        splash.show()
-        app.processEvents()
-        
+    
         # Initialize login dialog
         login = LoginRegisterDialog()
-        splash.finish(login)
         
         # Main application loop
         while True:
